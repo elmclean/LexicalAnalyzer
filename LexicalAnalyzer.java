@@ -6,8 +6,6 @@ public class LexicalAnalyzer
 	/* Character classes */
 	public static final int LETTER = 0;
 	public static final int DIGIT = 1;
-	public static final int SPACE = 2;
-	public static final int COMMENT = 3;
 	public static final int EOF = -1;
 	public static final int UNKNOWN = 99;
 
@@ -22,6 +20,22 @@ public class LexicalAnalyzer
 	public static final int LEFT_PAREN = 25;
 	public static final int RIGHT_PAREN = 26;
 
+	public static final int FOR_CODE = 30;
+	public static final int IF_CODE = 31;
+	public static final int ELSE_CODE = 32;
+	public static final int WHILE_CODE = 33;
+	public static final int DO_CODE = 34;
+	public static final int INT_CODE = 35;
+	public static final int FLOAT_CODE = 36;
+	public static final int SWITCH_CODE = 37;
+	public static final int SEMI_COLON = 38;
+	public static final int LESS_SYM = 39;
+	public static final int GREATER_SYM = 40;
+	public static final int EQUAL_SYM = 41;
+	public static final int LEFT_BRACE = 42;
+	public static final int RIGHT_BRACE = 43;
+	public static final int COMMENT = 44;
+
 	/* Global declarations */
 	/* Variables */
 	public int charClass;
@@ -33,7 +47,6 @@ public class LexicalAnalyzer
 	public int lexLen;
 	public int token;
 	public int nextToken;
-	public int prevToken;
 	public File in_fp;
 
 	public void setCharacters(char[] line) {
@@ -66,19 +79,43 @@ public class LexicalAnalyzer
 			case '*':
 				addChar();
 				nextToken = MULT_OP;
-
-				if(prevToken == DIV_OP) {
-					getComment();
-				}
 				break;
 			
 			case '/':
 				addChar();
 				nextToken = DIV_OP;
 				break;
-		}
 
-		prevToken = nextToken;
+			case ';':
+				addChar();
+				nextToken = SEMI_COLON;
+				break;
+
+			case '<':
+				addChar();
+				nextToken = LESS_SYM;
+				break;
+
+			case '>':
+				addChar();
+				nextToken = GREATER_SYM;
+				break;
+
+			case '=':
+				addChar();
+				nextToken = EQUAL_SYM;
+				break;
+
+			case '{':
+				addChar();
+				nextToken = LEFT_BRACE;
+				break;
+
+			case '}':
+				addChar();
+				nextToken = RIGHT_BRACE;
+				break;
+		}
 
 		return nextToken;
 	}
@@ -149,11 +186,6 @@ public class LexicalAnalyzer
 				}
 				nextToken = INT_LIT;
 				break;
-
-			/*  */
-			case SPACE:
-				getChar();
-				break;
 			
 			/* Parentheses and operators */
 			case UNKNOWN:
@@ -163,26 +195,39 @@ public class LexicalAnalyzer
 
 			/* EOF */
 			case EOF:
-				nextToken = EOF;
 				lexeme[0] = 'E';
 				lexeme[1] = 'O';
 				lexeme[2] = 'F';
 				lexeme[3] = 0;
+				nextToken = EOF;
 				break;
 		
 		} /* End of switch */
 
-		prevToken = nextToken;
+
+		// FOR, ELSE, SWITCH, WHILE, OTHER OPERATIONS
+		// if(nextToken == IDENT) {
+		// 	if(strcmp(lexeme, "for") == 0) {
+		// 		nextToken = FOR_CODE;
+		// 	} else if(strcmp(lexeme, "if") == 0) {
+		// 		nextToken = IF_CODE;
+		// 	} else if(strcmp(lexeme, "else") == 0) {
+		// 		nextToken = ELSE_CODE;
+		// 	} else if(strcmp(lexeme, "while") == 0) {
+		// 		nextToken = WHILE_CODE;
+		// 	} else if(strcmp(lexeme, "do") == 0) {
+		// 		nextToken = DO_CODE;
+		// 	} else if(strcmp(lexeme, "int") == 0) {
+		// 		nextToken = INT_CODE;
+		// 	} else if(strcmp(lexeme, "float") == 0) {
+		// 		nextToken = FLOAT_CODE;
+		// 	} else if(strcmp(lexeme, "switch") == 0) {
+		// 		nextToken = SWITCH_CODE;
+		// 	}
+		// }
 
 		System.out.println("Next token is: " + nextToken + ", Next lexeme is " + new String(lexeme));
 		return nextToken;
-	}
-
-	public void getComment() {
-		while (!(nextToken == DIV_OP && prevToken == MULT_OP)) {
-			addChar();
-			getChar();
-		}
 	}
 
 	// main class -----------------------------------------------------------------------------------------
