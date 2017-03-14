@@ -1,8 +1,10 @@
-@if(variable == 10):
+@if(variable === 10):
 @elseif(variable <= 30):
 @else:
 @endif;
 (sum + 47) / total;
 object->value;
 integer::name = 10;
-/..comment
+1435.6894512
+/--Comment
+"string literal constant" "constant again"

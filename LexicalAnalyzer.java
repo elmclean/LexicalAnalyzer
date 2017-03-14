@@ -13,6 +13,8 @@ public class LexicalAnalyzer
 	public static final int INT_LIT = 10;
 	public static final int IDENT = 11;
 	public static final int COMMENT = 12;
+	public static final int FLOAT_LIT = 13;
+	public static final int STRING_LIT = 14;
 
 	public static final int ASSIGN_OP = 20;
 	public static final int ADD_OP = 21;
@@ -46,6 +48,8 @@ public class LexicalAnalyzer
 	public static final int AMPERSAND_SYM = 55;
 	public static final int PIPE_SYM = 56;
 	public static final int DOT_SYM = 57;
+	public static final int DOUBLE_QUOTE = 58;
+	public static final int SINGLE_QUOTE = 59;
 
 	public static final int FOR_CODE = 60;
 	public static final int ENDFOR_CODE = 61;
@@ -74,27 +78,27 @@ public class LexicalAnalyzer
 	public static final int CHARACTER_TYPE = 83;
 	public static final int CLASS_TYPE = 84;
 	public static final int CONST_TYPE = 85;
-	public static final int DOUBLE_TYPE = 86;
 	public static final int FLOAT_TYPE = 87;
 	public static final int INT_TYPE = 88;
-	public static final int LONG_TYPE = 89;
 	public static final int SHORT_TYPE = 90;
 	public static final int STATIC_TYPE = 91;
+	public static final int TRUE_TYPE = 92;
+	public static final int FALSE_TYPE = 93;
 
 	public static final int RESTRICTED_CLASS = 95;
 	public static final int GUARDED_CLASS = 96;
 	public static final int OPEN_CLASS = 97;
 	public static final int VACANT_CLASS = 98;
 
-	public String[] keywords = {"array","boolean","break","byte","case","character","class",
-		"constant","continue","default","do","double","else","elseif","endif","endfor","endwhile",
-		"float","for","getLine","if","include","integer","long","new","print","restricted","guarded","open",
-		"return","short","static","switch","while","vacant"};
-	public int[] keywordsTokens = {ARRAY_TYPE, BOOLEAN_TYPE, BREAK_CODE, BYTE_TYPE, CASE_CODE,
-		CHARACTER_TYPE, CLASS_TYPE, CONST_TYPE, CONTINUE_CODE, DEFAULT_CODE, DO_CODE, DOUBLE_TYPE, ELSE_CODE,
+	public String[] keywords = {"boolean","@break","byte","@case","character","class",
+		"constant","@continue","@default","@do","@else","@elseif","@endif","@endfor","@endwhile",
+		"float","@for","getLine","@if","include","integer","new","print","restricted","guarded","open",
+		"return","short","static","@switch","@while","vacant","true","false"};
+	public int[] keywordsTokens = {BOOLEAN_TYPE, BREAK_CODE, BYTE_TYPE, CASE_CODE,
+		CHARACTER_TYPE, CLASS_TYPE, CONST_TYPE, CONTINUE_CODE, DEFAULT_CODE, DO_CODE, ELSE_CODE,
 		ELSEIF_CODE, ENDIF_CODE, ENDFOR_CODE, ENDWHILE_CODE, FLOAT_TYPE, FOR_CODE, GETLINE_CODE, IF_CODE, INCLUDE_CODE,
-		INT_TYPE, LONG_TYPE, NEW_CODE, PRINT_CODE, RESTRICTED_CLASS, GUARDED_CLASS, OPEN_CLASS, RETURN_CODE, SHORT_TYPE,
-		STATIC_TYPE, SWITCH_CODE, WHILE_CODE, VACANT_CLASS};
+		INT_TYPE, NEW_CODE, PRINT_CODE, RESTRICTED_CLASS, GUARDED_CLASS, OPEN_CLASS, RETURN_CODE, SHORT_TYPE,
+		STATIC_TYPE, SWITCH_CODE, WHILE_CODE, VACANT_CLASS, TRUE_TYPE, FALSE_TYPE};
 
 	public String[] relationalOperators = {"==","<",">","!=","<=",">="};
 	public int[] relationalTokens = {EQUALS_OP, LESS_SYM, GREATER_SYM, NOTEQUALS_OP, LESSEQUALS_OP,
@@ -126,6 +130,7 @@ public class LexicalAnalyzer
 	public int nextToken;
 	public int prevToken;
 	public File in_fp;
+	public boolean error = false;
 
 	public void setCharacters(char[] line) {
 		characters = line;
@@ -163,6 +168,14 @@ public class LexicalAnalyzer
 		}
 	}
 
+	public boolean isStatementStart(char ch) {
+		if(ch == '@') {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
 	public void buildLexeme(String[] keyArray, int[] tokenArray) {
 		int key = -1;
 		addChar();
@@ -179,6 +192,9 @@ public class LexicalAnalyzer
 				if(index < characters.length) {
 					index++;
 				}	
+			} else if(nextChar != '=' && !Character.isWhitespace(nextChar)) {
+				System.out.println("relational operator error");
+				error();
 			}
 		}
 	}
@@ -188,20 +204,43 @@ public class LexicalAnalyzer
 		addChar();
 		if(index < characters.length - 1) {
 			nextChar = characters[index];
-
-			if(nextChar == '.') {
+			if(nextChar == '-') {
 				addChar();
 				index++;
 				nextChar = characters[index];
-				if(nextChar == '.') {
-					System.out.println("comment");
-					do {
-						addChar();
+				if(nextChar == '-') {
+					addChar();
+					while(index < characters.length-1) {
 						index++;
-						nextChar = characters[index];
-					} while(index < characters.length);
+						lexeme[index] = characters[index];
+					}
+					index++;
+					nextToken = COMMENT;
+				} else {
+					System.out.println("comment error" + nextChar);
+					error();
 				}
 			}
+		}
+	}
+
+	public void buildStatement() {
+		int key = -1;
+		addChar();
+		getChar();
+		while(charClass == LETTER) {
+			addChar();
+			getChar();
+		}
+
+		String temp = new String(lexeme);
+
+		if(Arrays.asList(keywords).indexOf(temp.trim()) != -1) {
+			key = Arrays.asList(keywords).indexOf(temp.trim());
+			nextToken = keywordsTokens[key];
+		} else {
+			System.out.println("statement declaration error");
+			error();
 		}
 	}
 
@@ -217,6 +256,8 @@ public class LexicalAnalyzer
 			buildLexeme(assignmentOperators, assignmentTokens);
 		} else if(isCommentStart(ch)) {
 			buildComment();
+		} else if(isStatementStart(ch)) {
+			buildStatement();
 		} else {
 			if(Arrays.asList(mathimaticalOperators).indexOf(character) != -1) {
 				key = Arrays.asList(mathimaticalOperators).indexOf(character);
@@ -265,6 +306,12 @@ public class LexicalAnalyzer
 				charClass = LETTER;
 			} else if (Character.isDigit(nextChar)) {
 				charClass = DIGIT;
+			} else if (nextChar == '.') {
+				charClass = DOT_SYM;
+			} else if (nextChar == '\"') {
+				charClass = DOUBLE_QUOTE;
+			} else if (nextChar == '\'') {
+				charClass = SINGLE_QUOTE;
 			} else {
 				charClass = UNKNOWN;
 			}
@@ -284,7 +331,7 @@ public class LexicalAnalyzer
 
 	/* lex - a simple lexical analyzer for arithmetic expressions */
 	public int lex() {
-		lexeme = new char[100];
+		lexeme = new char[250];
 		lexLen = 0;
 		getNonBlank();
 
@@ -303,15 +350,49 @@ public class LexicalAnalyzer
 			
 			/* Parse integer literals */
 			case DIGIT:
+				boolean decimal = false;
 				addChar();
 				getChar();
-				while (charClass == DIGIT) {
-					addChar();
-					getChar();
+				while (charClass == DIGIT || charClass == DOT_SYM) {
+					if(decimal == false && charClass == DOT_SYM) {
+						decimal = true;
+						addChar();
+						getChar();
+					}
+					if(decimal == true && charClass == DOT_SYM) {
+						System.out.println("too many decimals");
+						error();
+						break;
+					} else {
+						addChar();
+						getChar();
+					}
 				}
-				nextToken = INT_LIT;
+
+				if(decimal) {
+					nextToken = FLOAT_LIT;
+				} else {
+					nextToken = INT_LIT;
+				}
 				break;
-			
+			/* String literal */
+			case DOUBLE_QUOTE:
+				addChar();
+				getChar();
+				boolean endQuote = false;
+				while(!endQuote) {
+					if(charClass == DOUBLE_QUOTE) {
+						addChar();
+						endQuote = true;
+						getChar();
+					} else {
+						addChar();
+						getChar();
+					}
+				}
+				nextToken = STRING_LIT;
+				break;
+
 			/* Parentheses and operators */
 			case UNKNOWN:
 				lookup(nextChar);
@@ -338,8 +419,7 @@ public class LexicalAnalyzer
 			}
 		}
 
-
-		if(nextToken != EOF) {
+		if(nextToken != EOF && !error) {
 			System.out.println("Next token is: " + nextToken + "....Next lexeme is " + value.trim());
 		}
 
@@ -347,13 +427,21 @@ public class LexicalAnalyzer
 		return nextToken;
 	}
 
+	public void error() {
+		error = true;
+	}
+
 	// main class -----------------------------------------------------------------------------------------
 	public static void main(String[] args) {
+
+		int lineCount = 1;
+        boolean error = false;
 
 		/* Open the input data file and process its contents */
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream("front.in.txt")))) {
         	String line;
-			while((line = reader.readLine()) != null) {
+			while((line = reader.readLine()) != null && !error) {
+				lineCount++;
 				LexicalAnalyzer front = new LexicalAnalyzer(); 
 				char[] characters = line.toCharArray();
 				
@@ -361,9 +449,17 @@ public class LexicalAnalyzer
 				front.getChar();
 				do {
 					front.lex();
-				} while(front.nextToken != EOF);
+				} while(front.nextToken != EOF && front.error == false);
+
+				if(front.error == true) {
+					error = true;
+				}
 			}
-			System.out.println("Next token is: -1....Next lexeme is EOF");
+			if(error == true) {
+				System.out.println("SYNTAX ERROR - Line " + lineCount);
+			} else {
+				System.out.println("Next token is: -1....Next lexeme is EOF");
+			}
         } catch (IOException e) {
             System.out.println("ERROR - cannot open front.in");
         }
