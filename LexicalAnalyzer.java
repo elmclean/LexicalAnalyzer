@@ -15,6 +15,8 @@ public class LexicalAnalyzer
 	public static final int COMMENT = 12;
 	public static final int FLOAT_LIT = 13;
 	public static final int STRING_LIT = 14;
+	public static final int UTIL_PACKAGE = 15;
+	public static final int IO_PACKAGE = 16;
 
 	public static final int ASSIGN_OP = 20;
 	public static final int ADD_OP = 21;
@@ -92,13 +94,13 @@ public class LexicalAnalyzer
 
 	public String[] keywords = {"boolean","@break","byte","@case","character","class",
 		"constant","@continue","@default","@do","@else","@elseif","@endif","@endfor","@endwhile",
-		"float","@for","getLine","@if","include","integer","new","print","restricted","guarded","open",
-		"return","short","static","@switch","@while","vacant","true","false"};
+		"float","@for","getLine","@if","include","integer","new","printMessage","restricted","guarded","open",
+		"return","short","static","@switch","@while","vacant","true","false","util","io","end"};
 	public int[] keywordsTokens = {BOOLEAN_TYPE, BREAK_CODE, BYTE_TYPE, CASE_CODE,
 		CHARACTER_TYPE, CLASS_TYPE, CONST_TYPE, CONTINUE_CODE, DEFAULT_CODE, DO_CODE, ELSE_CODE,
 		ELSEIF_CODE, ENDIF_CODE, ENDFOR_CODE, ENDWHILE_CODE, FLOAT_TYPE, FOR_CODE, GETLINE_CODE, IF_CODE, INCLUDE_CODE,
 		INT_TYPE, NEW_CODE, PRINT_CODE, RESTRICTED_CLASS, GUARDED_CLASS, OPEN_CLASS, RETURN_CODE, SHORT_TYPE,
-		STATIC_TYPE, SWITCH_CODE, WHILE_CODE, VACANT_CLASS, TRUE_TYPE, FALSE_TYPE};
+		STATIC_TYPE, SWITCH_CODE, WHILE_CODE, VACANT_CLASS, TRUE_TYPE, FALSE_TYPE, UTIL_PACKAGE, IO_PACKAGE, END_BLOCK};
 
 	public String[] relationalOperators = {"==","<",">","!=","<=",">="};
 	public int[] relationalTokens = {EQUALS_OP, LESS_SYM, GREATER_SYM, NOTEQUALS_OP, LESSEQUALS_OP,
@@ -113,9 +115,9 @@ public class LexicalAnalyzer
 	public String[] comparisonOperators = {"&&","||","!"};
 	public int[] comparisonTokens = {AND_OP, OR_OP, NOT_OP};
 
-	public String[] otherSymbols = {",",";","->","@","(",")","[","]",":","&","|","."};
+	public String[] otherSymbols = {",",";","->","@","(",")","[","]",":","&","|",".","{","}"};
 	public int[] otherTokens = {COMMA_SYM, SEMI_COLON, ARROW_OP, AT_SYM, RIGHT_PAREN, LEFT_PAREN, 
-		RIGHT_BRACE, LEFT_BRACE, COLON_SYM, AMPERSAND_SYM, PIPE_SYM, DOT_SYM};
+		RIGHT_BRACE, LEFT_BRACE, COLON_SYM, AMPERSAND_SYM, PIPE_SYM, DOT_SYM, RIGHT_BRACKET, LEFT_BRACKET};
 
 	/* Global declarations */
 	/* Variables */
@@ -436,22 +438,30 @@ public class LexicalAnalyzer
 
 		int lineCount = 1;
         boolean error = false;
+        ArrayList<Integer> tokenArray = new ArrayList<Integer>();
+        ArrayList<String> lexemeArray = new ArrayList<String>();
 
 		/* Open the input data file and process its contents */
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream("front.in.txt")))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream("projectProgram.elm")))) {
         	String line;
 			while((line = reader.readLine()) != null && !error) {
 				lineCount++;
-				LexicalAnalyzer front = new LexicalAnalyzer(); 
+				LexicalAnalyzer analyze = new LexicalAnalyzer(); 
 				char[] characters = line.toCharArray();
 				
-				front.setCharacters(characters);
-				front.getChar();
+				analyze.setCharacters(characters);
+				analyze.getChar();
 				do {
-					front.lex();
-				} while(front.nextToken != EOF && front.error == false);
+					analyze.lex();
+					String temp = new String(analyze.lexeme);
+					String lexeme = temp.trim();
+					if(!lexeme.equals("EOF")) {
+						tokenArray.add(analyze.nextToken);
+						lexemeArray.add(lexeme);
+					}
+				} while(analyze.nextToken != EOF && analyze.error == false);
 
-				if(front.error == true) {
+				if(analyze.error == true) {
 					error = true;
 				}
 			}
@@ -461,7 +471,7 @@ public class LexicalAnalyzer
 				System.out.println("Next token is: -1....Next lexeme is EOF");
 			}
         } catch (IOException e) {
-            System.out.println("ERROR - cannot open front.in");
+            System.out.println("ERROR - cannot open file");
         }
 	}
 }
