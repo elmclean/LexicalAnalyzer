@@ -60,12 +60,13 @@
 <return_statement> -> @return <expression>?;
 
 EXPRESSIONS
-<constant_expression> -> <expression>
 <expression> -> <assignment_expression>
-<assignment_expression> -> <conditional_expression> | <assignment>
-<assignment> -> <left_hand_side><assignment_operator><assignment_expression>
+<assignment_expression> -> <conditional_or_expression> | <assignment>
+
+<assignment> -> <left_hand_side> = <assignment_expression>
 <left_hand_side> -> <expression_name> | <field_access> | <array_access>
-<assignment_operator> -> = |*= | /= | %= | += | -= | &=
+<array_access> -> <expression_name>[<expression>] | <primary_no_new_array>[<expression>]
+
 <conditional_or_expression> -> <conditional_and_expression> | <conditional_or_expression ||
     <conditional_and_expression>
 <conditional_and_expression> -> <inclusive_or_expression> | <conditional_and_expression>
@@ -83,9 +84,8 @@ EXPRESSIONS
         <relational_expression> <= <shift_expression> |
         <relational_expression> >= <shift_expression> |
         <relational_expression> instanceof <reference_type>
-<shift_expression> -> <additive_expression> | <shift_expression> << <addititve_expression> |
- <shift_expression> >> <additive_expression> | <shift_expression> >>>
- <additive_expression>
+
+<shift_expression> -> <additive_expression> | <shift_expression> << <addititve_expression> | <shift_expression> >> <additive_expression> | <shift_expression> >>> <additive_expression>
 <additive_expression> -> <multiplicative_expression> | <additive_expression> +
       <multiplicative_expression> | <additive_expression> -
       <multiplicative_expression>
@@ -101,8 +101,6 @@ EXPRESSIONS
       !<unary_expression>
 
 
-<method_invocation> -> <method_name> (<argument_list>?) | <primary> -> <identifier>
-    (<arguement_list>?)
 <field_access> -> <primary> -> <identifier>
 <primary> -> <primary_no_new_array> | <array_creation_expression>
 <primary_no_new_array> -> <literal> | this | (<expression>) |
@@ -149,51 +147,3 @@ TOKENS
                        default | do | double | else | elseif | end | endif | endfor | endwhile | float | for | if | include
                        | integer | long | new | package | restricted | guarded | open | return | short | static |
                        switch | while
-
-
-
-
-EXAMPLE CODE
-/...comment.../
-@include package_name;
-Open class TestCode:
-open static vacant main():
-integer::variable_name = variable_value;
-float::variable_name = variable_value;
-string::variable_name = variable_value;
-array:: variable_name = variable_value;	
-
-@if(argument_list):
-	/..if something../
-	@if(argurment_list):
-		/..if something../
-	@endif;
-@elseif(argument_list):
-	/..else if something../
-@else:
-	/..finally../
-@endif;
-
-@for(argument_list):
-	/..loop../
-@endfor;
-
-@do:
-	/..loop something../
-@while(condition);
-end main;
-	
-	define open integer function_name(parameter_list):
-	/..function definition../
-	@return integer_value;
-end function_name;
-
-define guarded vacant function_name(parameter_list):
-	/..method definition../
-end function_name;
-
-define restricted task task_name(parameter_list):
-	/..function definition../
-	@return boolean_value;
-end function_name;
-end TestCode;

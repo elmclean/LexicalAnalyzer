@@ -7,6 +7,7 @@ public class LexicalAnalyzer
 	public static final int LETTER = 0;
 	public static final int DIGIT = 1;
 	public static final int EOF = -1;
+	public static final int EOL = -2;
 	public static final int UNKNOWN = 99;
 
 	/* Token codes */
@@ -17,6 +18,9 @@ public class LexicalAnalyzer
 	public static final int STRING_LIT = 14;
 	public static final int UTIL_PACKAGE = 15;
 	public static final int IO_PACKAGE = 16;
+	public static final int CHAR_LIT = 17;
+	public static final int START_PROGRAM = 78;
+	public static final int END_PROGRAM = 79;
 
 	public static final int ASSIGN_OP = 20;
 	public static final int ADD_OP = 21;
@@ -67,7 +71,6 @@ public class LexicalAnalyzer
 	public static final int DEFAULT_CODE = 71;
 	public static final int CONTINUE_CODE = 72;
 	public static final int BREAK_CODE = 73;
-	public static final int END_BLOCK = 74;
 	public static final int GETLINE_CODE = 75;
 	public static final int PRINT_CODE = 76;
 	public static final int INCLUDE_CODE = 77;
@@ -95,12 +98,12 @@ public class LexicalAnalyzer
 	public String[] keywords = {"boolean","@break","byte","@case","character","class",
 		"constant","@continue","@default","@do","@else","@elseif","@endif","@endfor","@endwhile",
 		"float","@for","getLine","@if","include","integer","new","printMessage","restricted","guarded","open",
-		"return","short","static","@switch","@while","vacant","true","false","util","io","end"};
+		"return","short","static","@switch","@while","vacant","true","false","util","io","startprogram", "endprogram"};
 	public int[] keywordsTokens = {BOOLEAN_TYPE, BREAK_CODE, BYTE_TYPE, CASE_CODE,
 		CHARACTER_TYPE, CLASS_TYPE, CONST_TYPE, CONTINUE_CODE, DEFAULT_CODE, DO_CODE, ELSE_CODE,
 		ELSEIF_CODE, ENDIF_CODE, ENDFOR_CODE, ENDWHILE_CODE, FLOAT_TYPE, FOR_CODE, GETLINE_CODE, IF_CODE, INCLUDE_CODE,
 		INT_TYPE, NEW_CODE, PRINT_CODE, RESTRICTED_CLASS, GUARDED_CLASS, OPEN_CLASS, RETURN_CODE, SHORT_TYPE,
-		STATIC_TYPE, SWITCH_CODE, WHILE_CODE, VACANT_CLASS, TRUE_TYPE, FALSE_TYPE, UTIL_PACKAGE, IO_PACKAGE, END_BLOCK};
+		STATIC_TYPE, SWITCH_CODE, WHILE_CODE, VACANT_CLASS, TRUE_TYPE, FALSE_TYPE, UTIL_PACKAGE, IO_PACKAGE, END_PROGRAM};
 
 	public String[] relationalOperators = {"==","<",">","!=","<=",">="};
 	public int[] relationalTokens = {EQUALS_OP, LESS_SYM, GREATER_SYM, NOTEQUALS_OP, LESSEQUALS_OP,
@@ -195,7 +198,7 @@ public class LexicalAnalyzer
 					index++;
 				}	
 			} else if(nextChar != '=' && !Character.isWhitespace(nextChar)) {
-				System.out.println("relational operator error");
+				System.out.println("SYNTAX ERROR - Relational operator not recognized - ");
 				error();
 			}
 		}
@@ -219,7 +222,7 @@ public class LexicalAnalyzer
 					index++;
 					nextToken = COMMENT;
 				} else {
-					System.out.println("comment error" + nextChar);
+					System.out.println("SYNTAX ERROR - Incorrect comment start - ");
 					error();
 				}
 			}
@@ -241,8 +244,31 @@ public class LexicalAnalyzer
 			key = Arrays.asList(keywords).indexOf(temp.trim());
 			nextToken = keywordsTokens[key];
 		} else {
-			System.out.println("statement declaration error");
+			System.out.println("SYNTAX ERROR - Incorrect statement declaration - ");
 			error();
+		}
+	}
+
+	public void buildSingleQuote() {
+		addChar();
+		getChar();
+
+		if(charClass == SINGLE_QUOTE) {
+			addChar();
+			index++;
+			nextToken = CHAR_LIT;
+		} else {
+			addChar();
+			getChar();
+
+			if(charClass != SINGLE_QUOTE) {
+				System.out.println("SYNTAX ERROR - Missing end quote - ");
+				error();
+			} else {
+				addChar();
+				index++;
+				nextToken = CHAR_LIT;
+			}
 		}
 	}
 
@@ -318,7 +344,7 @@ public class LexicalAnalyzer
 				charClass = UNKNOWN;
 			}
 		} else {
-			charClass = EOF;
+			charClass = EOL;
 		}
 
 		index++;
@@ -362,7 +388,7 @@ public class LexicalAnalyzer
 						getChar();
 					}
 					if(decimal == true && charClass == DOT_SYM) {
-						System.out.println("too many decimals");
+						System.out.println("SYNTAX ERROR - More than one decimal - ");
 						error();
 						break;
 					} else {
@@ -382,7 +408,7 @@ public class LexicalAnalyzer
 				addChar();
 				getChar();
 				boolean endQuote = false;
-				while(!endQuote) {
+				while(index < characters.length && !endQuote) {
 					if(charClass == DOUBLE_QUOTE) {
 						addChar();
 						endQuote = true;
@@ -392,8 +418,15 @@ public class LexicalAnalyzer
 						getChar();
 					}
 				}
+				if(!endQuote) {
+					System.out.println("SYNTAX ERROR - Missing end quote - ");
+					error();
+				}
 				nextToken = STRING_LIT;
 				break;
+
+			case SINGLE_QUOTE:
+				buildSingleQuote();
 
 			/* Parentheses and operators */
 			case UNKNOWN:
@@ -401,13 +434,13 @@ public class LexicalAnalyzer
 				getChar();
 				break;
 
-			/* EOF */
-			case EOF:
+			/* EOL */
+			case EOL:
 				lexeme[0] = 'E';
 				lexeme[1] = 'O';
-				lexeme[2] = 'F';
+				lexeme[2] = 'L';
 				lexeme[3] = 0;
-				nextToken = EOF;
+				nextToken = EOL;
 				break;
 		
 		} /* End of switch */
@@ -421,8 +454,8 @@ public class LexicalAnalyzer
 			}
 		}
 
-		if(nextToken != EOF && !error) {
-			System.out.println("Next token is: " + nextToken + "....Next lexeme is " + value.trim());
+		if(nextToken != EOL && !error) {
+			// System.out.println("Next token is: " + nextToken + "....Next lexeme is " + value.trim());
 		}
 
 		prevToken = nextToken;
@@ -433,7 +466,7 @@ public class LexicalAnalyzer
 		error = true;
 	}
 
-	// main class -----------------------------------------------------------------------------------------
+	// MAIN CLASS -------------------------------------------------------------------
 	public static void main(String[] args) {
 
 		int lineCount = 1;
@@ -453,25 +486,57 @@ public class LexicalAnalyzer
 				analyze.getChar();
 				do {
 					analyze.lex();
+
 					String temp = new String(analyze.lexeme);
 					String lexeme = temp.trim();
-					if(!lexeme.equals("EOF")) {
-						tokenArray.add(analyze.nextToken);
-						lexemeArray.add(lexeme);
-					}
-				} while(analyze.nextToken != EOF && analyze.error == false);
+					
+					tokenArray.add(analyze.nextToken);
+					lexemeArray.add(lexeme);
+				} while(analyze.nextToken != EOL && analyze.error == false);
 
 				if(analyze.error == true) {
 					error = true;
 				}
 			}
 			if(error == true) {
-				System.out.println("SYNTAX ERROR - Line " + lineCount);
+				System.out.print("Line " + lineCount);
 			} else {
-				System.out.println("Next token is: -1....Next lexeme is EOF");
+				tokenArray.add(-1);
+				lexemeArray.add("EOF");
+				// System.out.println("Next token is: -1....Next lexeme is EOF");
+
+				
 			}
         } catch (IOException e) {
             System.out.println("ERROR - cannot open file");
         }
 	}
+
+
+	// RECURSIVE-DECENT PARSER ------------------------------------------------------------
+	public static void parseProgram(ArrayList<Integer> tokenArray, ArrayList<String> lexemeArray) {
+		System.out.println("in the parsing program section");
+		System.out.println(Arrays.toString(tokenArray.toArray()));
+		System.out.println(Arrays.toString(lexemeArray.toArray()));
+
+		int nextToken = tokenArray.get(0);
+		parsePackages(nextToken);
+
+
+
+	}
+
+	public static void parsePackages() {
+		if
+	}
+}
+
+public class RecursiveParser
+{
+	public int nextToken;
+	public ArrayList<Integer> tokenArray;
+	public ArrayList<Integer> lexemeArray;
+
+
+
 }
