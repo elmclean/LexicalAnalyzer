@@ -103,7 +103,7 @@ public class LexicalAnalyzer
 		CHARACTER_TYPE, CLASS_TYPE, CONST_TYPE, CONTINUE_CODE, DEFAULT_CODE, DO_CODE, ELSE_CODE,
 		ELSEIF_CODE, ENDIF_CODE, ENDFOR_CODE, ENDWHILE_CODE, FLOAT_TYPE, FOR_CODE, GETLINE_CODE, IF_CODE, INCLUDE_CODE,
 		INT_TYPE, NEW_CODE, PRINT_CODE, RESTRICTED_CLASS, GUARDED_CLASS, OPEN_CLASS, RETURN_CODE, SHORT_TYPE,
-		STATIC_TYPE, SWITCH_CODE, WHILE_CODE, VACANT_CLASS, TRUE_TYPE, FALSE_TYPE, UTIL_PACKAGE, IO_PACKAGE, END_PROGRAM};
+		STATIC_TYPE, SWITCH_CODE, WHILE_CODE, VACANT_CLASS, TRUE_TYPE, FALSE_TYPE, UTIL_PACKAGE, IO_PACKAGE, START_PROGRAM, END_PROGRAM};
 
 	public String[] relationalOperators = {"==","<",">","!=","<=",">="};
 	public int[] relationalTokens = {EQUALS_OP, LESS_SYM, GREATER_SYM, NOTEQUALS_OP, LESSEQUALS_OP,
@@ -184,9 +184,9 @@ public class LexicalAnalyzer
 	public void buildLexeme(String[] keyArray, int[] tokenArray) {
 		int key = -1;
 		addChar();
+		
 		if(index < characters.length) {
 			nextChar = characters[index];
-
 			String temp = new String(lexeme);
 			String text = temp.trim() + String.valueOf(nextChar);
 
@@ -200,6 +200,24 @@ public class LexicalAnalyzer
 			} else if(nextChar != '=' && !Character.isWhitespace(nextChar)) {
 				System.out.println("SYNTAX ERROR - Relational operator not recognized - ");
 				error();
+			}
+		} else {
+			String character = String.valueOf(nextChar);
+			if(Arrays.asList(mathimaticalOperators).indexOf(character) != -1) {
+				key = Arrays.asList(mathimaticalOperators).indexOf(character);
+				nextToken = mathimaticalTokens[key];
+			} else if(Arrays.asList(otherSymbols).indexOf(character) != -1) {
+				key = Arrays.asList(otherSymbols).indexOf(character);
+				nextToken = otherTokens[key];
+			} else if(Arrays.asList(assignmentOperators).indexOf(character) != -1) {
+				key = Arrays.asList(assignmentOperators).indexOf(character);
+				nextToken = assignmentTokens[key];
+			} else if(Arrays.asList(comparisonOperators).indexOf(character) != -1) {
+				key = Arrays.asList(comparisonOperators).indexOf(character);
+				nextToken = comparisonTokens[key];
+			} else if(Arrays.asList(relationalOperators).indexOf(character) != -1) {
+				key = Arrays.asList(relationalOperators).indexOf(character);
+				nextToken = relationalTokens[key];
 			}
 		}
 	}
@@ -448,7 +466,7 @@ public class LexicalAnalyzer
 		String value = new String(lexeme);
 
 		if(nextToken == IDENT) {
-			int key = Arrays.asList(keywords).indexOf(value.trim());  
+			int key = Arrays.asList(keywords).indexOf(value.trim());
 			if(key != -1) {
 				nextToken = keywordsTokens[key];
 			}
@@ -503,9 +521,9 @@ public class LexicalAnalyzer
 			} else {
 				tokenArray.add(-1);
 				lexemeArray.add("EOF");
-				// System.out.println("Next token is: -1....Next lexeme is EOF");
 
-				
+				parseProgram(tokenArray, lexemeArray);
+				// System.out.println("Next token is: -1....Next lexeme is EOF");
 			}
         } catch (IOException e) {
             System.out.println("ERROR - cannot open file");
@@ -515,28 +533,105 @@ public class LexicalAnalyzer
 
 	// RECURSIVE-DECENT PARSER ------------------------------------------------------------
 	public static void parseProgram(ArrayList<Integer> tokenArray, ArrayList<String> lexemeArray) {
-		System.out.println("in the parsing program section");
-		System.out.println(Arrays.toString(tokenArray.toArray()));
-		System.out.println(Arrays.toString(lexemeArray.toArray()));
 
-		int nextToken = tokenArray.get(0);
-		parsePackages(nextToken);
+		RecursiveParser parser = new RecursiveParser(tokenArray, lexemeArray);
+		parser.parsePackages();
 
-
-
-	}
-
-	public static void parsePackages() {
-		if
 	}
 }
 
-public class RecursiveParser
+class RecursiveParser extends LexicalAnalyzer
 {
 	public int nextToken;
+	public int index;
+	public int line;
 	public ArrayList<Integer> tokenArray;
-	public ArrayList<Integer> lexemeArray;
+	public ArrayList<String> lexemeArray;
 
+	public String programName;
 
+	public RecursiveParser(ArrayList<Integer> tokens, ArrayList<String> lexemes) {
+		tokenArray = tokens;
+		lexemeArray	= lexemes;
+		index = 0;
+		line = 1;
+	}
+
+	public void error(String message) {
+		System.out.println("ERROR - Line " + line + ": " + message);
+	}
+
+	public void parsePackages() {
+		nextToken = tokenArray.get(index);
+
+		if(nextToken == INCLUDE_CODE) {
+			index++;
+			nextToken = tokenArray.get(index);
+
+			if(nextToken == UTIL_PACKAGE || nextToken == IO_PACKAGE) {
+				index++;
+				nextToken = tokenArray.get(index);
+
+				if(nextToken != SEMI_COLON) {
+					String message = "Missing semi-colon";
+					error(message);
+				} else {
+					index++;
+					nextToken = tokenArray.get(index);
+
+					if(nextToken != EOL) {
+						String message = "No multiple declarations";
+						error(message);
+					} else {
+						line++;
+						index++;
+						parsePackages(); // recursion call
+					}
+				}
+			} else {
+				String message = "Invalid package";
+				error(message);
+			}
+		} else if(nextToken == EOL) {
+			line++;
+			index++;
+			parsePackages();  // recursion call
+		} else if(nextToken == START_PROGRAM) {
+			index++;
+			parseProgram();  // call to program body parse
+		} else {
+			String message = "Incorrect start program declaration";
+			error(message);
+		}
+	}
+
+	public void parseProgram() {
+		nextToken = tokenArray.get(index);
+
+		if(nextToken == IDENT) {
+			programName = lexemeArray.get(index);
+			index++;
+			nextToken = tokenArray.get(index);
+
+			if(nextToken == COLON_SYM) {
+				index++;
+				nextToken = tokenArray.get(index);
+
+				if(nextToken == EOL) {
+					index++;
+					parseBlock();
+				}
+			} else {
+				String message = "Missing colon";
+				error(message);
+			}
+		} else {
+			System.out.println("other operations to come");
+		}
+	}
+
+	public void parseBlock() {
+		System.out.println("in the parse block statement");
+	}
 
 }
