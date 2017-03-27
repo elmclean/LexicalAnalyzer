@@ -89,6 +89,7 @@ public class LexicalAnalyzer
 	public static final int STATIC_TYPE = 91;
 	public static final int TRUE_TYPE = 92;
 	public static final int FALSE_TYPE = 93;
+	public static final int STRING_TYPE = 94;
 
 	public static final int RESTRICTED_CLASS = 95;
 	public static final int GUARDED_CLASS = 96;
@@ -98,12 +99,14 @@ public class LexicalAnalyzer
 	public String[] keywords = {"boolean","@break","byte","@case","character","class",
 		"constant","@continue","@default","@do","@else","@elseif","@endif","@endfor","@endwhile",
 		"float","@for","getLine","@if","include","integer","new","printMessage","restricted","guarded","open",
-		"return","short","static","@switch","@while","vacant","true","false","util","io","startprogram", "endprogram"};
+		"return","short","static","@switch","@while","vacant","true","false","util","io","startprogram",
+		"endprogram", "string"};
 	public int[] keywordsTokens = {BOOLEAN_TYPE, BREAK_CODE, BYTE_TYPE, CASE_CODE,
 		CHARACTER_TYPE, CLASS_TYPE, CONST_TYPE, CONTINUE_CODE, DEFAULT_CODE, DO_CODE, ELSE_CODE,
 		ELSEIF_CODE, ENDIF_CODE, ENDFOR_CODE, ENDWHILE_CODE, FLOAT_TYPE, FOR_CODE, GETLINE_CODE, IF_CODE, INCLUDE_CODE,
 		INT_TYPE, NEW_CODE, PRINT_CODE, RESTRICTED_CLASS, GUARDED_CLASS, OPEN_CLASS, RETURN_CODE, SHORT_TYPE,
-		STATIC_TYPE, SWITCH_CODE, WHILE_CODE, VACANT_CLASS, TRUE_TYPE, FALSE_TYPE, UTIL_PACKAGE, IO_PACKAGE, START_PROGRAM, END_PROGRAM};
+		STATIC_TYPE, SWITCH_CODE, WHILE_CODE, VACANT_CLASS, TRUE_TYPE, FALSE_TYPE, UTIL_PACKAGE, IO_PACKAGE, 
+		START_PROGRAM, END_PROGRAM, STRING_TYPE};
 
 	public String[] relationalOperators = {"==","<",">","!=","<=",">="};
 	public int[] relationalTokens = {EQUALS_OP, LESS_SYM, GREATER_SYM, NOTEQUALS_OP, LESSEQUALS_OP,
@@ -119,8 +122,8 @@ public class LexicalAnalyzer
 	public int[] comparisonTokens = {AND_OP, OR_OP, NOT_OP};
 
 	public String[] otherSymbols = {",",";","->","@","(",")","[","]",":","&","|",".","{","}"};
-	public int[] otherTokens = {COMMA_SYM, SEMI_COLON, ARROW_OP, AT_SYM, RIGHT_PAREN, LEFT_PAREN, 
-		RIGHT_BRACE, LEFT_BRACE, COLON_SYM, AMPERSAND_SYM, PIPE_SYM, DOT_SYM, RIGHT_BRACKET, LEFT_BRACKET};
+	public int[] otherTokens = {COMMA_SYM, SEMI_COLON, ARROW_OP, AT_SYM, LEFT_PAREN, RIGHT_PAREN, 
+		LEFT_BRACE, RIGHT_BRACE, COLON_SYM, AMPERSAND_SYM, PIPE_SYM, DOT_SYM, LEFT_BRACKET, RIGHT_BRACKET};
 
 	/* Global declarations */
 	/* Variables */
@@ -142,8 +145,14 @@ public class LexicalAnalyzer
 	}
 
 	public boolean isRelationalStart(char ch) {
-		if(ch == '<' || ch == '>' || ch == '!' || ch == '=') {
-			return true;
+		int tempIndex = index + 1;
+
+		if(tempIndex < characters.length) {
+			if((ch == '<' || ch == '>' || ch == '!' || ch == '=') && !Character.isWhitespace(characters[index])) {
+				return true;
+			} else {
+				return false;
+			}
 		} else {
 			return false;
 		}
@@ -530,15 +539,24 @@ public class LexicalAnalyzer
         }
 	}
 
-
 	// RECURSIVE-DECENT PARSER ------------------------------------------------------------
 	public static void parseProgram(ArrayList<Integer> tokenArray, ArrayList<String> lexemeArray) {
-
-		RecursiveParser parser = new RecursiveParser(tokenArray, lexemeArray);
-		parser.parsePackages();
-
+		try{
+		    PrintWriter writer = new PrintWriter("Test.txt", "UTF-8");
+		    RecursiveParser parser = new RecursiveParser(tokenArray, lexemeArray, writer);
+		    
+		    parser.parsePackages();
+			
+			System.out.println("all the way back in the thing");
+			// writer.println("Hello world\r\nProblem");
+			writer.close();
+		} catch (IOException e) {
+		   System.out.println("ERROR - cannot open file");
+		}
 	}
 }
+
+
 
 class RecursiveParser extends LexicalAnalyzer
 {
@@ -547,42 +565,69 @@ class RecursiveParser extends LexicalAnalyzer
 	public int line;
 	public ArrayList<Integer> tokenArray;
 	public ArrayList<String> lexemeArray;
+	public PrintWriter writeFile;
+
+	public ArrayList<String> variableArray = new ArrayList<String>();
+	public ArrayList<String> typeArray = new ArrayList<String>();
 
 	public String programName;
+	public boolean errors = false;
 
-	public RecursiveParser(ArrayList<Integer> tokens, ArrayList<String> lexemes) {
+	public RecursiveParser(ArrayList<Integer> tokens, ArrayList<String> lexemes, PrintWriter writer) {
 		tokenArray = tokens;
 		lexemeArray	= lexemes;
+		writeFile = writer;
 		index = 0;
 		line = 1;
 	}
 
+	public void nextToken() {
+		index++;
+		if(index < tokenArray.size()) {
+			nextToken = tokenArray.get(index);
+		}
+	}
+
 	public void error(String message) {
 		System.out.println("ERROR - Line " + line + ": " + message);
+		while(nextToken != EOL && index < tokenArray.size()) {
+			index++;
+			nextToken = tokenArray.get(index);
+		}
+		line++;
+		index++;
+
+		errors = true;
 	}
 
 	public void parsePackages() {
-		nextToken = tokenArray.get(index);
+		if(index < tokenArray.size()) {
+			nextToken = tokenArray.get(index);
+		}
 
 		if(nextToken == INCLUDE_CODE) {
-			index++;
-			nextToken = tokenArray.get(index);
-
+			writeFile.print(lexemeArray.get(index));
+			nextToken();
 			if(nextToken == UTIL_PACKAGE || nextToken == IO_PACKAGE) {
-				index++;
-				nextToken = tokenArray.get(index);
+				if(nextToken == UTIL_PACKAGE) {
+					writeFile.print(" java.util.*");
+				} else if(nextToken == IO_PACKAGE) {
+					writeFile.print(" java.io.*");
+				}
 
+				nextToken();
 				if(nextToken != SEMI_COLON) {
 					String message = "Missing semi-colon";
 					error(message);
 				} else {
-					index++;
-					nextToken = tokenArray.get(index);
-
+					writeFile.print(lexemeArray.get(index));
+					nextToken();
 					if(nextToken != EOL) {
 						String message = "No multiple declarations";
 						error(message);
 					} else {
+						writeFile.print("\r\n");
+						System.out.println("end package declaration");
 						line++;
 						index++;
 						parsePackages(); // recursion call
@@ -591,13 +636,18 @@ class RecursiveParser extends LexicalAnalyzer
 			} else {
 				String message = "Invalid package";
 				error(message);
+				parsePackages();
 			}
 		} else if(nextToken == EOL) {
 			line++;
 			index++;
+			writeFile.print("\r\n");
+			System.out.println("end package declaraction");
 			parsePackages();  // recursion call
 		} else if(nextToken == START_PROGRAM) {
+			writeFile.print("public class ");
 			index++;
+			System.out.println("end of package section, go to start program");
 			parseProgram();  // call to program body parse
 		} else {
 			String message = "Incorrect start program declaration";
@@ -606,19 +656,22 @@ class RecursiveParser extends LexicalAnalyzer
 	}
 
 	public void parseProgram() {
-		nextToken = tokenArray.get(index);
-
+		if(index < tokenArray.size()) {
+			nextToken = tokenArray.get(index);
+		}
+	
 		if(nextToken == IDENT) {
 			programName = lexemeArray.get(index);
-			index++;
-			nextToken = tokenArray.get(index);
-
+			writeFile.print(programName);
+			nextToken();
 			if(nextToken == COLON_SYM) {
-				index++;
-				nextToken = tokenArray.get(index);
-
+				writeFile.print("\r\n{\r\npublic static void main(String[] args) {\r\n");
+				nextToken();
 				if(nextToken == EOL) {
+					writeFile.print("\r\n");
+					line++;
 					index++;
+					System.out.println("end of statement in block");
 					parseBlock();
 				}
 			} else {
@@ -628,10 +681,534 @@ class RecursiveParser extends LexicalAnalyzer
 		} else {
 			System.out.println("other operations to come");
 		}
+		System.out.println("come back to the start");
 	}
 
 	public void parseBlock() {
-		System.out.println("in the parse block statement");
+		if(index < tokenArray.size()) {
+			nextToken = tokenArray.get(index);
+		}
+
+		if(nextToken == EOF) {
+			System.out.println("reached end of the file");
+		} else if(nextToken == EOL) {
+			writeFile.print("\r\n");
+			line++;
+			index++;
+			System.out.println("end of statement in block");
+			parseBlock();
+		} else if(nextToken == COMMENT) {
+			writeFile.print(lexemeArray.get(index));
+			nextToken();
+			if(nextToken == EOL) {
+				writeFile.print("\r\n");
+				line++;
+				index++;
+				System.out.println("recognized comment");
+				parseBlock();
+			}
+		} else if(nextToken == INT_TYPE || nextToken == FLOAT_TYPE || nextToken == STRING_TYPE) {
+			if(nextToken == INT_TYPE) {
+				writeFile.print("int");
+			} else if(nextToken == FLOAT_TYPE) {
+				writeFile.print("float");
+			} else if(nextToken == STRING_TYPE) {
+				writeFile.print("String");
+			}
+
+			String type = lexemeArray.get(index);
+			index++;
+			variableDeclaration(type);
+		} else if(nextToken == PRINT_CODE) {
+			writeFile.print("System.out.println");
+			nextToken();
+			if(nextToken == LEFT_PAREN) {
+				writeFile.print(lexemeArray.get(index));
+				nextToken();
+				if(nextToken == IDENT) {
+					String variableName = lexemeArray.get(index);
+
+					if(variableArray.indexOf(variableName) != -1) {
+						int key = variableArray.indexOf(variableName);
+						String variableType = typeArray.get(key);
+
+						writeFile.print(lexemeArray.get(index));
+
+						index++;
+						mathematicalAssignment(variableType);
+					} else {
+						String message = "Variable may not have been initialized";
+						error(message);
+						parseBlock();
+					}
+
+				} else if(nextToken == STRING_LIT) {
+					writeFile.print(lexemeArray.get(index));
+					nextToken();
+					if(nextToken == ADD_OP) {
+						writeFile.print(lexemeArray.get(index));
+						index++;
+						String type = "string";
+						mathematicalAssignment(type);
+
+					} else if(nextToken == RIGHT_PAREN) {
+						writeFile.print(lexemeArray.get(index));
+						nextToken();
+						if(nextToken == SEMI_COLON) {
+							writeFile.print(lexemeArray.get(index));
+							nextToken();
+							if(nextToken == EOL) {
+								writeFile.print("\r\n");
+								line++;
+								index++;
+								System.out.println("end of print statement");
+								parseBlock();
+							} else {
+								String message = "Only one declaration per line";
+								error(message);
+								parseBlock();
+							}
+						} else {
+							String message = "Missing semi-colon";
+							error(message);
+							parseBlock();
+						}
+					} else {
+						String message = "Incorrect printMessage parameters";
+						error(message);
+						parseBlock();
+					}
+				} else {
+					String message = "Incorrect printMessage parameters";
+					error(message);
+					parseBlock();
+				}
+			} else {
+				System.out.println(lexemeArray.get(index));
+				String message = "Missing left parentheses";
+				error(message);
+				parseBlock();
+			}
+		} else if(nextToken == END_PROGRAM) {
+
+			nextToken();
+			if(nextToken == IDENT) {
+				String variableName = lexemeArray.get(index);
+				if(variableName.equals(programName)) {
+					nextToken();
+					if(nextToken == SEMI_COLON) {
+						writeFile.print("}\r\n}");
+						nextToken();
+						if(nextToken == EOL) {
+							writeFile.print("\r\n");
+						} else {
+							String message = "Only one declaration per line";
+							error(message);
+						}
+					} else {
+						String message = "Missing semi-colon";
+						error(message);
+					}
+				} else {
+					String message = "Name does not match program name";
+					error(message);
+				}
+
+			} else {
+				String message = "Inccorect end program declaration";
+				error(message);
+			}
+		} else if(nextToken == SEMI_COLON) {
+			writeFile.print(lexemeArray.get(index));
+			nextToken();
+			if(nextToken == EOL) {
+				writeFile.print("\r\n");
+				line++;
+				index++;
+				System.out.println("end printMessage statement");
+				parseBlock();
+			} else {
+				String message = "Only one declaration per line";
+				error(message);
+				parseBlock();
+			}
+		} else {
+			System.out.println("other types to come");
+		}
 	}
 
+	public void variableDeclaration(String type) {
+		if(index < tokenArray.size()) {
+			nextToken = tokenArray.get(index);
+		}
+
+		if(nextToken == RIGHT_BRACE) {
+			writeFile.print(lexemeArray.get(index));
+			nextToken();
+			if(nextToken == LEFT_BRACE) {
+				writeFile.print(lexemeArray.get(index));
+				nextToken();
+				if(nextToken == TYPE_DEFINE) {
+					writeFile.print(" ");
+					nextToken();
+					if(nextToken == IDENT) {
+						writeFile.print(lexemeArray.get(index));
+						nextToken();
+						variableArray.add(lexemeArray.get(index));
+						typeArray.add(type);
+						if(nextToken == SEMI_COLON) {
+							writeFile.print(lexemeArray.get(index));
+							line++;
+							index++;
+							parseBlock();
+						} else if(nextToken == ASSIGN_OP) {
+							writeFile.print(lexemeArray.get(index));
+							index++;
+							arrayAssignment(type);
+						} else {
+							String message = "Incorrect array initialization";
+							error(message);
+							parseBlock();
+						}
+					} else {
+						String message = "Incorrect array initialization";
+						error(message);
+						parseBlock();
+					}
+				} else {
+					String message = "Incorrect array initialization";
+					error(message);
+					parseBlock();
+				}
+			} else {
+				String message = "Missing ending left brace";
+				error(message);
+				parseBlock();
+			}
+		} else if(nextToken == TYPE_DEFINE) {
+			writeFile.print(" ");
+			nextToken();
+			if(nextToken == IDENT) {
+				writeFile.print(lexemeArray.get(index));
+				variableArray.add(lexemeArray.get(index));
+				typeArray.add(type);
+				
+				nextToken();
+				if(nextToken == ASSIGN_OP) {
+					writeFile.print(lexemeArray.get(index));
+					index++;
+					parseAssignment(type);
+				} else if(nextToken == SEMI_COLON) {
+					writeFile.print(lexemeArray.get(index));
+					nextToken();
+					if(nextToken == EOL) {
+						writeFile.print("\r\n");
+						line++;
+						index++;
+						System.out.println("end of statement block");
+						parseBlock();
+					} else {
+						String message = "Only one declaration per line";
+						error(message);
+						parseBlock();
+					}
+				} else {
+					String message = "Incorrect varibale initialization";
+					error(message);
+					parseBlock();
+				}			
+			} else {
+				String message = "Incorrect variable initialization";
+				error(message);
+				parseBlock();
+			}
+		} else {
+			String message = "Incorrect variable initialization";
+			error(message);
+			parseBlock();
+		}
+	}
+
+	public void parseAssignment(String type) {
+		if(index < tokenArray.size()) {
+			nextToken = tokenArray.get(index);
+		}
+
+		if(nextToken == INT_LIT && type.equals("integer")) {
+			writeFile.print(lexemeArray.get(index));
+			index++;
+			assignmentStatement();
+		} else if(nextToken == FLOAT_LIT && type.equals("float")) {
+			writeFile.print(lexemeArray.get(index));
+			index++;
+			assignmentStatement();
+		} else if(nextToken == STRING_LIT && type.equals("string")) {
+			writeFile.print(lexemeArray.get(index));
+			index++;
+			assignmentStatement();
+		} else if(nextToken == IDENT) {
+			String variableName = lexemeArray.get(index);
+
+			if(variableArray.indexOf(variableName) != -1) {
+				int key = variableArray.indexOf(variableName);
+				String variableType = typeArray.get(key);
+				
+				if(type.equals("string")) {
+					writeFile.print(lexemeArray.get(index));
+					index++;
+					mathematicalAssignment(type);
+				} else if(!type.equals(variableType)) {
+					String message = "Incompatable type values";
+					error(message);
+					parseBlock();
+				} else {
+					writeFile.print(lexemeArray.get(index));
+					index++;
+					mathematicalAssignment(type);
+				}
+			} else {
+				String message = "Variable may not have been initialized";
+				error(message);
+				parseBlock();
+			}
+		} else if(nextToken == SEMI_COLON) {
+			writeFile.print(lexemeArray.get(index));
+			nextToken();
+			if(nextToken == EOL) {
+				writeFile.print("\r\n");
+				line++;
+				index++;
+				System.out.println("end of statement block");
+				parseBlock();
+			} else {
+				String message = "Only one declaraction per line";
+				error(message);
+				parseBlock();
+			}
+		} else if(nextToken == ADD_OP || nextToken == SUB_OP || nextToken == MOD_OP ||
+	   			  nextToken == MULT_OP || nextToken == DIV_OP) {
+			writeFile.print(lexemeArray.get(index));
+			index++;
+			mathematicalAssignment(type);
+		} else {
+			String message = "Incorrect type value";
+			error(message);
+			parseBlock();
+		}
+	}
+
+	public void mathematicalAssignment(String type) {
+		if(index < tokenArray.size()) {
+			nextToken = tokenArray.get(index);
+		}
+
+		if(nextToken == ADD_OP || nextToken == SUB_OP || nextToken == MOD_OP ||
+		   nextToken == MULT_OP || nextToken == DIV_OP) {
+		   	writeFile.print(lexemeArray.get(index));
+			nextToken();
+			if( (nextToken == INT_LIT && type.equals("integer")) || 
+				(nextToken == FLOAT_LIT && type.equals("float")) | 
+				(nextToken == STRING_LIT && type.equals("string"))) {
+
+				writeFile.print(lexemeArray.get(index));
+				nextToken();
+				if(nextToken == SEMI_COLON) {
+					writeFile.print(lexemeArray.get(index));
+					nextToken();
+					if(nextToken == EOL) {
+						writeFile.print("\r\n");
+						line++;
+						index++;
+						System.out.println("end of statement block");
+						parseBlock();
+					} else {
+						String message = "Only one declaraction per line";
+						error(message);
+						parseBlock();
+					}
+				} else {	
+					System.out.println(lexemeArray.get(index));
+					String message = "Incorrect type value";
+					error(message);
+					parseBlock();
+				}
+			} else if(nextToken == IDENT) {
+				String variableName = lexemeArray.get(index);
+
+				if(variableArray.indexOf(variableName) != -1) {
+					int key = variableArray.indexOf(variableName);
+					String variableType = typeArray.get(key);
+					
+					if(type.equals("string")) {
+						writeFile.print(lexemeArray.get(index));
+						index++;
+						mathematicalAssignment(type);
+					} else if(!type.equals(variableType)) {
+						String message = "Incompatable type values";
+						error(message);
+						parseBlock();
+					} else {
+						writeFile.print(lexemeArray.get(index));
+						index++;
+						mathematicalAssignment(type);
+					}
+				} else {
+					String message = "Variable may not have been initialized";
+					error(message);
+					parseBlock();
+				}
+			} else {
+				String message = "Incorrect type value";
+				error(message);
+				parseBlock();
+			}
+		} else if(nextToken == IDENT) {
+			String variableName = lexemeArray.get(index);
+
+			if(variableArray.indexOf(variableName) != -1) {
+				int key = variableArray.indexOf(variableName);
+				String variableType = typeArray.get(key);
+				
+				if(type.equals("string")) {
+					writeFile.print(lexemeArray.get(index));
+					index++;
+					mathematicalAssignment(type);
+				} else if(!type.equals(variableType)) {
+					String message = "Incompatable type values";
+					error(message);
+					parseBlock();
+				} else {
+					writeFile.print(lexemeArray.get(index));
+					index++;
+					mathematicalAssignment(type);
+				}
+			} else {
+				String message = "Variable may not have been initialized";
+				error(message);
+				parseBlock();
+			}
+		} else if(nextToken == SEMI_COLON) {
+			writeFile.print(lexemeArray.get(index));
+			nextToken();
+			if(nextToken == EOL) {
+				writeFile.print("\r\n");
+				line++;
+				index++;
+				System.out.println("end of statement block");
+				parseBlock();
+			} else {
+				String message = "Only one declaraction per line";
+				error(message);
+				parseBlock();
+			}
+		} else if(nextToken == RIGHT_PAREN) {
+			writeFile.print(lexemeArray.get(index));
+			index++;
+			parseBlock();
+		} else {
+			String message = "Incorrect expression";
+			error(message);
+			parseBlock();
+		}
+	}
+
+	public void assignmentStatement() {
+		if(index < tokenArray.size()) {
+			nextToken = tokenArray.get(index);
+		}
+
+		if(nextToken == SEMI_COLON) {
+			writeFile.print(lexemeArray.get(index));
+			index++;
+			nextToken = tokenArray.get(index);
+			if(nextToken == EOL) {
+				writeFile.print("\r\n");
+				line++;
+				index++;
+				System.out.println("end of statement in block");
+				parseBlock();
+			} else {
+				String message = "Only one declaration per line";
+				error(message);
+				parseBlock();
+			}
+		} else {
+			String message = "Missing semi-colon";
+			error(message);
+			parseBlock();
+		}
+	}
+
+	public void arrayAssignment(String type) {
+		if(index < tokenArray.size()) {
+			nextToken = tokenArray.get(index);
+		}
+
+		if(nextToken == ASSIGN_OP) {
+			writeFile.print(lexemeArray.get(index));
+			nextToken();
+			if(nextToken == LEFT_BRACKET) {
+				writeFile.print(lexemeArray.get(index));
+				index++;
+				arrayLiteral(type);
+			} else {
+				String message = "Incorrect array initialization";
+				error(message);
+				parseBlock();
+			}
+		} else {
+			String message = "Incorrect array assignment values";
+			error(message);
+			parseBlock();
+		}
+	}
+
+	public void arrayLiteral(String type) {
+		if(index < tokenArray.size()) {
+			nextToken = tokenArray.get(index);
+		}
+
+		if( (nextToken == INT_LIT && type.equals("integer")) ||
+			(nextToken == FLOAT_LIT && type.equals("float")) ||
+			(nextToken == STRING_LIT && type.equals("string")) ) {
+
+			writeFile.print(lexemeArray.get(index));
+			nextToken();
+			if(nextToken == COMMA_SYM) {
+				writeFile.print(lexemeArray.get(index));
+				index++;
+				arrayLiteral(type);
+			} else if(nextToken == RIGHT_BRACKET) {
+				writeFile.print(lexemeArray.get(index));
+				nextToken();
+				if(nextToken == SEMI_COLON) {
+					writeFile.print(lexemeArray.get(index));
+					nextToken();
+					if(nextToken == EOL) {
+						writeFile.print("\r\n");
+						line++;
+						index++;
+						System.out.println("end of statement in block");
+						parseBlock();
+					} else {
+						String message = "Only one declaraction per line";
+						error(message);
+						parseBlock();
+					}
+				} else {
+					String message = "Missing semi-colon";
+					error(message);
+					parseBlock();
+				}
+			} else {
+				String message = "Missing comma delimiter";
+				error(message);
+				parseBlock();
+			}
+		} else {
+			String message = "Value type not compatable with array type";
+			error(message);
+			parseBlock();
+		}
+	}
 }

@@ -1,9 +1,11 @@
 include util;
 include io;
 
-startprogram projectProgram:
-	/-- print message to console
-	printMessage("Hello World!");
-	integer::x = 10;
-	float::y = 5.25;
-endprogram projectProgram;
+startprogram Test:
+	/-- variable initialization
+	integer::num1 = 5;
+	integer::num2 = 10;
+	integer::sum = num1 + num2;
+
+	printMessage("The sum of num1 and num2 is " + sum);
+endprogram Test;
