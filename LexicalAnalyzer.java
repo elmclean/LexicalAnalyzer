@@ -3,14 +3,14 @@ import java.io.*;
 
 public class LexicalAnalyzer
 {
-	/* Character classes */
+	// character classes
 	public static final int LETTER = 0;
 	public static final int DIGIT = 1;
 	public static final int EOF = -1;
 	public static final int EOL = -2;
 	public static final int UNKNOWN = 99;
 
-	/* Token codes */
+	// token codes, not all implemented, just wanted to cover bases
 	public static final int INT_LIT = 10;
 	public static final int IDENT = 11;
 	public static final int COMMENT = 12;
@@ -96,6 +96,7 @@ public class LexicalAnalyzer
 	public static final int OPEN_CLASS = 97;
 	public static final int VACANT_CLASS = 98;
 
+	// parallel arrays to speed up the process of looking for errors
 	public String[] keywords = {"boolean","@break","byte","@case","character","class",
 		"constant","@continue","@default","@do","@else","@elseif","@endif","@endfor","@endwhile",
 		"float","@for","getLine","@if","include","integer","new","printMessage","restricted","guarded","open",
@@ -125,8 +126,7 @@ public class LexicalAnalyzer
 	public int[] otherTokens = {COMMA_SYM, SEMI_COLON, ARROW_OP, AT_SYM, LEFT_PAREN, RIGHT_PAREN, 
 		LEFT_BRACE, RIGHT_BRACE, COLON_SYM, AMPERSAND_SYM, PIPE_SYM, DOT_SYM, LEFT_BRACKET, RIGHT_BRACKET};
 
-	/* Global declarations */
-	/* Variables */
+	// global variables
 	public int charClass;
 	public char[] lexeme;
 	public char[] characters;
@@ -140,10 +140,12 @@ public class LexicalAnalyzer
 	public File in_fp;
 	public boolean error = false;
 
+	// convert string from file into a character array
 	public void setCharacters(char[] line) {
 		characters = line;
 	}
 
+	// check is the character is the start to a relational operator
 	public boolean isRelationalStart(char ch) {
 		int tempIndex = index + 1;
 
@@ -158,6 +160,7 @@ public class LexicalAnalyzer
 		}
 	}
 
+	// check if character is the start of an object operator
 	public boolean isObjectOperatorStart(char ch) {
 		if(ch == '-') {
 			return true;
@@ -166,6 +169,7 @@ public class LexicalAnalyzer
 		}
 	}
 
+	// check if character is the start of a variable type definer
 	public boolean isVariableTypeStart(char ch) {
 		if(ch == ':') {
 			return true;
@@ -174,6 +178,7 @@ public class LexicalAnalyzer
  		}
 	}
 
+	// check if character is the start of a comment
 	public boolean isCommentStart(char ch) {
 		if(ch == '/') {
 			return true;
@@ -182,6 +187,7 @@ public class LexicalAnalyzer
 		}
 	}
 
+	// check if character is the start of a statement
 	public boolean isStatementStart(char ch) {
 		if(ch == '@') {
 			return true;
@@ -189,6 +195,8 @@ public class LexicalAnalyzer
 			return false;
 		}
 	}
+
+	// check if character is the start of a logical operator
 	public boolean isLogicStart(char ch) {
 		if(ch == '|' || ch == '&') {
 			return true;
@@ -197,28 +205,31 @@ public class LexicalAnalyzer
 		}
 	}
 
+	// build the next lexeme if it is more than one character
 	public void buildLexeme(String[] keyArray, int[] tokenArray) {
-		int key = -1;
-		addChar();
+		int key = -1;  // index not found
+		addChar();  // add character to array
 		
 		if(index < characters.length) {
-			nextChar = characters[index];
-			String temp = new String(lexeme);
-			String text = temp.trim() + String.valueOf(nextChar);
+			nextChar = characters[index];  // get character from array
+			String temp = new String(lexeme);  // convert char[] to string
+			String text = temp.trim() + String.valueOf(nextChar);  // trim extra spaces
 
-			if(Arrays.asList(keyArray).indexOf(text) != -1) {
+			if(Arrays.asList(keyArray).indexOf(text) != -1) {  // if index found
 				key = Arrays.asList(keyArray).indexOf(text);
 				addChar();
-				nextToken = tokenArray[key];
+				nextToken = tokenArray[key];  // find coresponding token from array
 				if(index < characters.length) {
 					index++;
 				}	
-			} else if(nextChar != '=' && !Character.isWhitespace(nextChar)) {
-				System.out.println("SYNTAX ERROR - Relational operator not recognized - ");
+			} else if(nextChar != '=' && !Character.isWhitespace(nextChar)) {  // wrong syntax
+				System.out.print("SYNTAX ERROR - Relational operator not recognized - ");
 				error();
 			}
 		} else {
 			String character = String.valueOf(nextChar);
+
+			// check if character has a defined token 
 			if(Arrays.asList(mathimaticalOperators).indexOf(character) != -1) {
 				key = Arrays.asList(mathimaticalOperators).indexOf(character);
 				nextToken = mathimaticalTokens[key];
@@ -238,36 +249,40 @@ public class LexicalAnalyzer
 		}
 	}
 
+	// build the lexeme for a comment
 	public void buildComment() {
-		int key = -1;
-		addChar();
+		int key = -1;  // index not found
+		addChar();  // add character to array
+
 		if(index < characters.length - 1) {
 			nextChar = characters[index];
-			if(nextChar == '-') {
+			if(nextChar == '-') {  // next char needed for comment
 				addChar();
 				index++;
 				nextChar = characters[index];
-				if(nextChar == '-') {
+				if(nextChar == '-') {  // next char needed for comment
 					addChar();
-					while(index < characters.length-1) {
+					while(index < characters.length-1) {  // grab the rest of the line
 						index++;
 						lexeme[index] = characters[index];
 					}
 					index++;
 					nextToken = COMMENT;
-				} else {
-					System.out.println("SYNTAX ERROR - Incorrect comment start - ");
+				} else {  // wrong syntax
+					System.out.print("SYNTAX ERROR - Incorrect comment start - ");
 					error();
 				}
 			}
 		}
 	}
 
+	// build the lexeme for a statement
 	public void buildStatement() {
-		int key = -1;
+		int key = -1;  // index not found
 		addChar();
 		nextChar = characters[index];
 		
+		// grab all the following characters as long as it's a letter
 		while(index <= characters.length - 1 && Character.isLetter(nextChar)) {
 			addChar();
 			index++;
@@ -278,20 +293,21 @@ public class LexicalAnalyzer
 
 		String temp = new String(lexeme);
 
-		if(Arrays.asList(keywords).indexOf(temp.trim()) != -1) {
+		if(Arrays.asList(keywords).indexOf(temp.trim()) != -1) {  // if found in array
 			key = Arrays.asList(keywords).indexOf(temp.trim());
 			nextToken = keywordsTokens[key];
 		} else {
-			System.out.println("SYNTAX ERROR - Incorrect statement declaration");
+			System.out.print("SYNTAX ERROR - Incorrect statement declaration - ");
 			error();
 		}
 	}
 
+	// build a lexeme for a character literal
 	public void buildSingleQuote() {
 		addChar();
-		getChar();
+		getChar();  // get next character from input stream
 
-		if(charClass == SINGLE_QUOTE) {
+		if(charClass == SINGLE_QUOTE) {  // empty char literal
 			addChar();
 			index++;
 			nextToken = CHAR_LIT;
@@ -299,8 +315,8 @@ public class LexicalAnalyzer
 			addChar();
 			getChar();
 
-			if(charClass != SINGLE_QUOTE) {
-				System.out.println("SYNTAX ERROR - Missing end quote - ");
+			if(charClass != SINGLE_QUOTE) {  // more than one character, syntax error
+				System.out.print("SYNTAX ERROR - Missing end quote - ");
 				error();
 			} else {
 				addChar();
@@ -310,10 +326,12 @@ public class LexicalAnalyzer
 		}
 	}
 
+	// assign a token to an unknown symbol
 	public int lookup(char ch) {
 		String character = String.valueOf(ch);
 		int key = -1;
 
+		// check to see if the start of a larger lexeme
 		if(isRelationalStart(ch)) {
 			buildLexeme(relationalOperators, relationalTokens);
 		} else if(isLogicStart(ch)) {
@@ -326,7 +344,7 @@ public class LexicalAnalyzer
 			buildComment();
 		} else if(isStatementStart(ch)) {
 			buildStatement();
-		} else {
+		} else {  // check arrays for character
 			if(Arrays.asList(mathimaticalOperators).indexOf(character) != -1) {
 				key = Arrays.asList(mathimaticalOperators).indexOf(character);
 				addChar();
@@ -354,7 +372,7 @@ public class LexicalAnalyzer
 		return nextToken;
 	}
 
-	/* addChar - a function to add nextChar to lexeme */
+	// add nextChar to lexeme
 	public void addChar() {
 		if (lexLen <= 98) {
 			lexeme[lexLen++] = nextChar;
@@ -365,7 +383,7 @@ public class LexicalAnalyzer
 		}
 	}
 
-	/* getChar - a function to get the next character of input and determine its character class */
+	// get the next character of input and determine its character class
 	public void getChar() {
 		if (index < characters.length) {
 			nextChar = characters[index];
@@ -390,14 +408,14 @@ public class LexicalAnalyzer
 		index++;
 	}
 
-	/* getNonBlank - a function to call getChar until it returns a non-whitespace character */
+	// call getChar until it returns a non-whitespace character
 	void getNonBlank() {
 		while (Character.isWhitespace(nextChar)) {
 			getChar();
 		}
 	}
 
-	/* lex - a simple lexical analyzer for arithmetic expressions */
+	// simple lexical analyzer for arithmetic expressions
 	public int lex() {
 		lexeme = new char[250];
 		lexLen = 0;
@@ -405,7 +423,7 @@ public class LexicalAnalyzer
 
 		switch (charClass) {
 
-			/* Parse identifiers */
+			// parse identifiers
 			case LETTER:
 				addChar();
 				getChar();
@@ -416,7 +434,7 @@ public class LexicalAnalyzer
 				nextToken = IDENT;
 				break;
 			
-			/* Parse integer literals */
+			// parse integer literals
 			case DIGIT:
 				boolean decimal = false;
 				addChar();
@@ -428,7 +446,7 @@ public class LexicalAnalyzer
 						getChar();
 					}
 					if(decimal == true && charClass == DOT_SYM) {
-						System.out.println("SYNTAX ERROR - More than one decimal - ");
+						System.out.print("SYNTAX ERROR - More than one decimal - ");
 						error();
 						break;
 					} else {
@@ -443,7 +461,8 @@ public class LexicalAnalyzer
 					nextToken = INT_LIT;
 				}
 				break;
-			/* String literal */
+
+			// parse string literal
 			case DOUBLE_QUOTE:
 				addChar();
 				getChar();
@@ -459,7 +478,7 @@ public class LexicalAnalyzer
 					}
 				}
 				if(!endQuote) {
-					System.out.println("SYNTAX ERROR - Missing end quote - ");
+					System.out.print("SYNTAX ERROR - Missing end quote - ");
 					error();
 				}
 				nextToken = STRING_LIT;
@@ -468,13 +487,13 @@ public class LexicalAnalyzer
 			case SINGLE_QUOTE:
 				buildSingleQuote();
 
-			/* Parentheses and operators */
+			// parse parentheses, operators and other symbols
 			case UNKNOWN:
 				lookup(nextChar);
 				getChar();
 				break;
 
-			/* EOL */
+			// end of line from file
 			case EOL:
 				lexeme[0] = 'E';
 				lexeme[1] = 'O';
@@ -483,25 +502,27 @@ public class LexicalAnalyzer
 				nextToken = EOL;
 				break;
 		
-		} /* End of switch */
+		}
 
 		String value = new String(lexeme);
 
-		if(nextToken == IDENT) {
+		if(nextToken == IDENT) {  // check if identifier is a reserved keyword
 			int key = Arrays.asList(keywords).indexOf(value.trim());
 			if(key != -1) {
 				nextToken = keywordsTokens[key];
 			}
 		}
 
-		if(nextToken != EOL && !error) {
-			// System.out.println("Next token is: " + nextToken + "....Next lexeme is " + value.trim());
-		}
+		// for printing the lexeme and it's corresponding token
+		// if(nextToken != EOL && !error) {
+		// 	System.out.println("Next token is: " + nextToken + "....Next lexeme is " + value.trim());
+		// }
 
 		prevToken = nextToken;
 		return nextToken;
 	}
 
+	// an error was found
 	public void error() {
 		error = true;
 	}
@@ -509,26 +530,26 @@ public class LexicalAnalyzer
 	// MAIN CLASS -------------------------------------------------------------------
 	public static void main(String[] args) {
 
-		int lineCount = 1;
+		int lineCount = 1;  // keep track of source code line numbers
         boolean error = false;
         ArrayList<Integer> tokenArray = new ArrayList<Integer>();
         ArrayList<String> lexemeArray = new ArrayList<String>();
 
-		/* Open the input data file and process its contents */
+		// open the input data file and process its contents
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream("projectProgram.elm")))) {
         	String line;
 			while((line = reader.readLine()) != null && !error) {
 				lineCount++;
 				LexicalAnalyzer analyze = new LexicalAnalyzer(); 
-				char[] characters = line.toCharArray();
+				char[] characters = line.toCharArray();  // convert string to character array
 				
 				analyze.setCharacters(characters);
 				analyze.getChar();
 				do {
-					analyze.lex();
+					analyze.lex();  // call to lexical analyzer
 
 					String temp = new String(analyze.lexeme);
-					String lexeme = temp.trim();
+					String lexeme = temp.trim();  // trim white spaces
 					
 					tokenArray.add(analyze.nextToken);
 					lexemeArray.add(lexeme);
@@ -538,9 +559,11 @@ public class LexicalAnalyzer
 					error = true;
 				}
 			}
+
+			// if there was a lexeme error
 			if(error == true) {
-				System.out.print("Line " + lineCount);
-			} else {
+				System.out.print("Line " + lineCount + "\n");
+			} else {  // parse program
 				tokenArray.add(-1);
 				lexemeArray.add("EOF");
 
@@ -552,20 +575,34 @@ public class LexicalAnalyzer
         }
 	}
 
-	// RECURSIVE-DECENT PARSER ------------------------------------------------------------
+	// function to call the program parser
 	public static void parseProgram(ArrayList<Integer> tokenArray, ArrayList<String> lexemeArray) {
 		try{
 		    PrintWriter writer = new PrintWriter("Test.java", "UTF-8");
 		    RecursiveParser parser = new RecursiveParser(tokenArray, lexemeArray, writer);
-		    
-		    System.out.println(Arrays.toString(lexemeArray.toArray()));
 
-		    parser.parsePackages();
-			
-			System.out.println("all the way back in the thing");
+		    parser.parsePackages();  // parse the program
 
-			// writer.println("Hello world\r\nProblem");
-			writer.close();
+		    // if syntax error, write over file to simply print an error message
+			if(parser.getError()) {
+				writer.close();
+
+				try {
+					PrintWriter error = new PrintWriter("Test.java", "UTF-8");
+					error.println("import java.util.*;");
+					error.println("import java.io.*;");
+					error.println("public class Test\r\n{");
+					error.println("public static void main(String[] args)\r\n{");
+					error.println("System.out.println(\"Error generating file.\");");
+					error.println("}\r\n}");
+					error.close();
+				} catch(IOException e) {
+					System.out.println("ERROR - cannot open file");
+				}
+			} else { // no errors found
+				System.out.println("FINISHED - No errors found");
+				writer.close();
+			}
 		} catch (IOException e) {
 		   System.out.println("ERROR - cannot open file");
 		}
@@ -573,9 +610,10 @@ public class LexicalAnalyzer
 }
 
 
-
+// RECURSIVE-DECENT PARSER ------------------------------------------------------------
 class RecursiveParser extends LexicalAnalyzer
 {
+	// global variables
 	public int nextToken;
 	public int index;
 	public int line;
@@ -590,6 +628,7 @@ class RecursiveParser extends LexicalAnalyzer
 	public boolean errors = false;
 	public boolean ifStatement = false;
 
+	// assign starting values to the global variables
 	public RecursiveParser(ArrayList<Integer> tokens, ArrayList<String> lexemes, PrintWriter writer) {
 		tokenArray = tokens;
 		lexemeArray	= lexemes;
@@ -598,6 +637,7 @@ class RecursiveParser extends LexicalAnalyzer
 		line = 1;
 	}
 
+	// get the nextToken from the array
 	public void nextToken() {
 		index++;
 		if(index < tokenArray.size()) {
@@ -605,8 +645,11 @@ class RecursiveParser extends LexicalAnalyzer
 		}
 	}
 
+	// print error message to console
 	public void error(String message) {
 		System.out.println("ERROR - Line " + line + ": " + message);
+
+		// go to end of the line and continue parsing
 		while(nextToken != EOL && index < tokenArray.size()) {
 			index++;
 			nextToken = tokenArray.get(index);
@@ -617,54 +660,57 @@ class RecursiveParser extends LexicalAnalyzer
 		errors = true;
 	}
 
+	// return errors boolean value
+	public boolean getError() {
+		return errors;
+	}
+
+	// parse the included program packages, if any
 	public void parsePackages() {
 		if(index < tokenArray.size()) {
 			nextToken = tokenArray.get(index);
 		}
 
 		if(nextToken == INCLUDE_CODE) {
-			writeFile.print("import");
-			nextToken();
+			writeFile.print("import");  // print corresponding java code to file
+			nextToken();  // get next token
 			if(nextToken == UTIL_PACKAGE || nextToken == IO_PACKAGE) {
 				if(nextToken == UTIL_PACKAGE) {
-					writeFile.print(" java.util.*");
+					writeFile.print(" java.util.*");  // print corresponding java code
 				} else if(nextToken == IO_PACKAGE) {
-					writeFile.print(" java.io.*");
+					writeFile.print(" java.io.*");  // print corresponding java code
 				}
 
-				nextToken();
+				nextToken();  // get next token
 				if(nextToken != SEMI_COLON) {
-					String message = "Missing semi-colon";
-					error(message);
+					String message = "Missing semi-colon";  // create error message
+					error(message);  // print message and line number to console
 				} else {
-					writeFile.print(lexemeArray.get(index));
-					nextToken();
+					writeFile.print(lexemeArray.get(index));  // write lexeme to file
+					nextToken();  // get next token
 					if(nextToken != EOL) {
 						String message = "No multiple declarations";
 						error(message);
 					} else {
-						writeFile.print("\r\n");
-						System.out.println("end package declaration");
+						writeFile.print("\r\n");  // print new line to file
 						line++;
 						index++;
-						parsePackages(); // recursion call
+						parsePackages(); // recursive parsePackage call
 					}
 				}
 			} else {
 				String message = "Invalid package";
 				error(message);
-				parsePackages();
+				parsePackages(); // recursive parsePackage call
 			}
 		} else if(nextToken == EOL) {
 			line++;
 			index++;
 			writeFile.print("\r\n");
-			System.out.println("end package declaraction");
-			parsePackages();  // recursion call
+			parsePackages();  // recursive parsePackage call
 		} else if(nextToken == START_PROGRAM) {
-			writeFile.print("public class ");
+			writeFile.print("public class ");  // print corresponding java code
 			index++;
-			System.out.println("end of package section, go to start program");
 			parseProgram();  // call to program body parse
 		} else {
 			String message = "Incorrect start program declaration";
@@ -672,15 +718,16 @@ class RecursiveParser extends LexicalAnalyzer
 		}
 	}
 
+	// parse the starting declaration for the program
 	public void parseProgram() {
 		if(index < tokenArray.size()) {
 			nextToken = tokenArray.get(index);
 		}
 	
 		if(nextToken == IDENT) {
-			programName = lexemeArray.get(index);
-			writeFile.print(programName);
-			nextToken();
+			programName = lexemeArray.get(index);  // first indent is the name of the file
+			writeFile.print(programName);  // write lexeme to file
+			nextToken();  // get next token
 			if(nextToken == COLON_SYM) {
 				writeFile.print("\r\n{\r\npublic static void main(String[] args) {\r\n");
 				nextToken();
@@ -688,7 +735,6 @@ class RecursiveParser extends LexicalAnalyzer
 					writeFile.print("\r\n");
 					line++;
 					index++;
-					System.out.println("end of statement in block");
 					parseBlock();
 				}
 			} else {
@@ -698,9 +744,9 @@ class RecursiveParser extends LexicalAnalyzer
 		} else {
 			System.out.println("other operations to come");
 		}
-		System.out.println("come back to the start");
 	}
 
+	// parse all the statements in the program block
 	public void parseBlock() {
 		if(index < tokenArray.size()) {
 			nextToken = tokenArray.get(index);
@@ -712,19 +758,17 @@ class RecursiveParser extends LexicalAnalyzer
 			writeFile.print("\r\n");
 			line++;
 			index++;
-			System.out.println("end of statement in block");
-			parseBlock();
+			parseBlock();  // recursive parseBlock call
 		} else if(nextToken == COMMENT) {
 			String comment = lexemeArray.get(index);
-			String translatedComment = comment.replaceAll("--", "/");
-			writeFile.print(translatedComment);
-			nextToken();
+			String translatedComment = comment.replaceAll("--", "/");  // java comment
+			writeFile.print(translatedComment);  // write comment to file
+			nextToken();  // get next token
 			if(nextToken == EOL) {
 				writeFile.print("\r\n");
 				line++;
 				index++;
-				System.out.println("recognized comment");
-				parseBlock();
+				parseBlock();  // recursive parseBlock call
 			}
 		} else if(nextToken == INT_TYPE || nextToken == FLOAT_TYPE || nextToken == STRING_TYPE) {
 			if(nextToken == INT_TYPE) {
@@ -737,9 +781,9 @@ class RecursiveParser extends LexicalAnalyzer
 
 			String type = lexemeArray.get(index);
 			index++;
-			variableDeclaration(type);
+			variableDeclaration(type);  // call to parse variable declaration
 		} else if(nextToken == PRINT_CODE) {
-			writeFile.print("System.out.println");
+			writeFile.print("System.out.println");  // write java code
 			nextToken();
 			if(nextToken == LEFT_PAREN) {
 				writeFile.print(lexemeArray.get(index));
@@ -747,18 +791,20 @@ class RecursiveParser extends LexicalAnalyzer
 				if(nextToken == IDENT) {
 					String variableName = lexemeArray.get(index);
 
+					// check if variable was initialized
 					if(variableArray.indexOf(variableName) != -1) {
 						int key = variableArray.indexOf(variableName);
 						String variableType = typeArray.get(key);
 
-						writeFile.print(lexemeArray.get(index));
+						writeFile.print(lexemeArray.get(index)); // write variable
 
+						// if variable declaration also mathematical assignment
 						index++;
-						mathematicalAssignment(variableType);
+						mathematicalAssignment(variableType);  // call to mathematical assignment
 					} else {
 						String message = "Variable may not have been initialized";
 						error(message);
-						parseBlock();
+						parseBlock();  // even with error, continue parsing
 					}
 
 				} else if(nextToken == STRING_LIT) {
@@ -769,23 +815,22 @@ class RecursiveParser extends LexicalAnalyzer
 						index++;
 						String type = "string";
 						mathematicalAssignment(type);
-
 					} else if(nextToken == RIGHT_PAREN) {
 						writeFile.print(lexemeArray.get(index));
-						nextToken();
+						nextToken();  // get next token
 						if(nextToken == SEMI_COLON) {
-							writeFile.print(lexemeArray.get(index));
+							writeFile.print(lexemeArray.get(index));  // write to file
 							nextToken();
 							if(nextToken == EOL) {
 								writeFile.print("\r\n");
-								line++;
+								line++;  // keep track of line number
 								index++;
-								System.out.println("end of print statement");
-								parseBlock();
+								parseBlock();  // recursive paresBlock call 
+
 							} else {
 								String message = "Only one declaration per line";
 								error(message);
-								parseBlock();
+								parseBlock();  // even with errors, continue to parse
 							}
 						} else {
 							String message = "Missing semi-colon";
@@ -800,40 +845,41 @@ class RecursiveParser extends LexicalAnalyzer
 				} else {
 					String message = "Incorrect printMessage parameters";
 					error(message);
-					parseBlock();
+					parseBlock();  // even with errors, continue to parse
 				}
 			} else {
-				System.out.println(lexemeArray.get(index));
-				String message = "Missing left parentheses";
+				String message = "Missing left parentheses";  // error message
 				error(message);
-				parseBlock();
+				parseBlock();  // even with errors, continue to parse
 			}
 		} else if(nextToken == IF_CODE) {
 			writeFile.print("if");
 			ifStatement = true;
 			index++;
-			parseIfStatement();
+			parseIfStatement();  // call to parseIfStatement
 		} else if(nextToken == ELSE_CODE) {
 			writeFile.print("}else");
-			nextToken();
+			ifStatement = true;
+			nextToken();  // get token
 			if(nextToken == COLON_SYM) {
 				writeFile.print("{\r\n");
 				index++;
-				parseBlock();
+				parseBlock();  // recursive parseBlock call
 			} else {
 				String message = "Missing colon";
 				error(message);
-				parseBlock();
+				parseBlock();  // even with errors, continue to parse
 			}
 		} else if(nextToken == ENDIF_CODE && ifStatement) {
 			writeFile.print("}\r\n");
 			ifStatement = false;
 			index++;
-			parseBlock();
+			parseBlock();  // recursive parseBlock call
 		} else if(nextToken == END_PROGRAM && !ifStatement) {
 			nextToken();
 			if(nextToken == IDENT) {
 				String variableName = lexemeArray.get(index);
+				// make sure ending identifier is the same as the start
 				if(variableName.equals(programName)) {
 					nextToken();
 					if(nextToken == SEMI_COLON) {
@@ -844,19 +890,22 @@ class RecursiveParser extends LexicalAnalyzer
 						} else {
 							String message = "Only one declaration per line";
 							error(message);
+							parseBlock();
 						}
 					} else {
 						String message = "Missing semi-colon";
 						error(message);
+						parseBlock();  // even with errors, continue to parse
 					}
 				} else {
 					String message = "Name does not match program name";
 					error(message);
+					parseBlock();
 				}
-
 			} else {
-				String message = "Inccorect end program declaration";
+				String message = "Incorrect end program declaration";
 				error(message);
+				parseBlock();
 			}
 		} else if(nextToken == SEMI_COLON && tokenArray.get(index-1) == RIGHT_PAREN) {
 			writeFile.print(lexemeArray.get(index));
@@ -865,12 +914,11 @@ class RecursiveParser extends LexicalAnalyzer
 				writeFile.print("\r\n");
 				line++;
 				index++;
-				System.out.println("end printMessage statement");
-				parseBlock();
+				parseBlock();  // recursive parseBlock call
 			} else {
 				String message = "Only one declaration per line";
 				error(message);
-				parseBlock();
+				parseBlock();  // even with errors, continue to parse
 			}
 		} else {
 			String message = "Incorrect Expression";
@@ -879,15 +927,18 @@ class RecursiveParser extends LexicalAnalyzer
 		}
 	}
 
+
+	// parse the declaration of a variable
 	public void variableDeclaration(String type) {
 		if(index < tokenArray.size()) {
 			nextToken = tokenArray.get(index);
 		}
-
-		if(nextToken == RIGHT_BRACE) {
+		
+		// declare an array variable
+		if(nextToken == LEFT_BRACE) {
 			writeFile.print(lexemeArray.get(index));
-			nextToken();
-			if(nextToken == LEFT_BRACE) {
+			nextToken();  // get next token
+			if(nextToken == RIGHT_BRACE) {
 				writeFile.print(lexemeArray.get(index));
 				nextToken();
 				if(nextToken == TYPE_DEFINE) {
@@ -896,17 +947,20 @@ class RecursiveParser extends LexicalAnalyzer
 					if(nextToken == IDENT) {
 						writeFile.print(lexemeArray.get(index));
 						nextToken();
+
+						// add variable to arraylist to keep track of inialized 
+						// variables and their types
 						variableArray.add(lexemeArray.get(index));
 						typeArray.add(type);
 						if(nextToken == SEMI_COLON) {
 							writeFile.print(lexemeArray.get(index));
 							line++;
 							index++;
-							parseBlock();
+							parseBlock();  // recursive parseBlock call
 						} else if(nextToken == ASSIGN_OP) {
 							writeFile.print(lexemeArray.get(index));
 							index++;
-							arrayAssignment(type);
+							arrayAssignment(type);  // call to arrayAssignment
 						} else {
 							String message = "Incorrect array initialization";
 							error(message);
@@ -915,7 +969,7 @@ class RecursiveParser extends LexicalAnalyzer
 					} else {
 						String message = "Incorrect array initialization";
 						error(message);
-						parseBlock();
+						parseBlock();  // even with errors, continue to parse
 					}
 				} else {
 					String message = "Incorrect array initialization";
@@ -923,7 +977,7 @@ class RecursiveParser extends LexicalAnalyzer
 					parseBlock();
 				}
 			} else {
-				String message = "Missing ending left brace";
+				String message = "Missing ending left brace";  // error message
 				error(message);
 				parseBlock();
 			}
@@ -931,11 +985,13 @@ class RecursiveParser extends LexicalAnalyzer
 			writeFile.print(" ");
 			nextToken();
 			if(nextToken == IDENT) {
-				writeFile.print(lexemeArray.get(index));
+				writeFile.print(lexemeArray.get(index));  // write to file
+
+				// keep track of variables and type
 				variableArray.add(lexemeArray.get(index));
 				typeArray.add(type);
 				
-				nextToken();
+				nextToken();  // get next token
 				if(nextToken == ASSIGN_OP) {
 					writeFile.print(lexemeArray.get(index));
 					index++;
@@ -947,8 +1003,7 @@ class RecursiveParser extends LexicalAnalyzer
 						writeFile.print("\r\n");
 						line++;
 						index++;
-						System.out.println("end of statement block");
-						parseBlock();
+						parseBlock();  // recursive parseBlock call
 					} else {
 						String message = "Only one declaration per line";
 						error(message);
@@ -967,7 +1022,7 @@ class RecursiveParser extends LexicalAnalyzer
 		} else {
 			String message = "Incorrect variable initialization";
 			error(message);
-			parseBlock();
+			parseBlock();  // even with errors, continue to parse
 		}
 	}
 
@@ -1008,7 +1063,7 @@ class RecursiveParser extends LexicalAnalyzer
 					index++;
 					mathematicalAssignment(type);
 				}
-			} else {
+			} else {  // variable not found in variable array
 				String message = "Variable may not have been initialized";
 				error(message);
 				parseBlock();
@@ -1017,10 +1072,9 @@ class RecursiveParser extends LexicalAnalyzer
 			writeFile.print(lexemeArray.get(index));
 			nextToken();
 			if(nextToken == EOL) {
-				writeFile.print("\r\n");
+				writeFile.print("\r\n");  // write to file
 				line++;
 				index++;
-				System.out.println("end of statement block");
 				parseBlock();
 			} else {
 				String message = "Only one declaraction per line";
@@ -1031,11 +1085,11 @@ class RecursiveParser extends LexicalAnalyzer
 	   			  nextToken == MULT_OP || nextToken == DIV_OP) {
 			writeFile.print(lexemeArray.get(index));
 			index++;
-			mathematicalAssignment(type);
+			mathematicalAssignment(type);  // call to matematicalAssignment
 		} else {
 			String message = "Incorrect type value";
 			error(message);
-			parseBlock();
+			parseBlock();  // even with errors, continue to parse
 		}
 	}
 
@@ -1044,13 +1098,15 @@ class RecursiveParser extends LexicalAnalyzer
 			nextToken = tokenArray.get(index);
 		}
 
+		// if next token is a mathematical operator and previous was a ident or literal
 		if( (nextToken == ADD_OP || nextToken == SUB_OP || nextToken == MOD_OP ||
 		   nextToken == MULT_OP || nextToken == DIV_OP) && (tokenArray.get(index-1) == IDENT ||
 		   tokenArray.get(index-1) == INT_LIT || tokenArray.get(index-1) == FLOAT_LIT || 
 		   tokenArray.get(index-1) == STRING_LIT) ) {
 
 		   	writeFile.print(lexemeArray.get(index));
-			nextToken();
+			nextToken();  // get token
+			// if literal is the same as variable type
 			if( (nextToken == INT_LIT && type.equals("integer")) || 
 				(nextToken == FLOAT_LIT && type.equals("float")) | 
 				(nextToken == STRING_LIT && type.equals("string"))) {
@@ -1058,14 +1114,13 @@ class RecursiveParser extends LexicalAnalyzer
 				writeFile.print(lexemeArray.get(index));
 				nextToken();
 				if(nextToken == SEMI_COLON) {
-					writeFile.print(lexemeArray.get(index));
+					writeFile.print(lexemeArray.get(index));  // write to file
 					nextToken();
 					if(nextToken == EOL) {
 						writeFile.print("\r\n");
 						line++;
 						index++;
-						System.out.println("end of statement block");
-						parseBlock();
+						parseBlock();  // recursive parseBlock call
 					} else {
 						String message = "Only one declaraction per line";
 						error(message);
@@ -1075,9 +1130,47 @@ class RecursiveParser extends LexicalAnalyzer
 					System.out.println(lexemeArray.get(index));
 					String message = "Incorrect type value";
 					error(message);
-					parseBlock();
+					parseBlock();  // even with errors, continue to parse
 				}
 			} else if(nextToken == IDENT) {
+				String variableName = lexemeArray.get(index);
+
+				if(variableArray.indexOf(variableName) != -1) {
+					int key = variableArray.indexOf(variableName);
+					String variableType = typeArray.get(key);
+					
+					if(type.equals("string")) {
+						writeFile.print(lexemeArray.get(index));
+						index++;
+						mathematicalAssignment(type);  // call to mathematicalAssignment
+					} else if(!type.equals(variableType)) {
+						String message = "Incompatable type values";
+						error(message);
+						parseBlock();
+					} else {
+						writeFile.print(lexemeArray.get(index));
+						index++;
+						mathematicalAssignment(type); // call to mathematical assignment
+					}
+				} else {
+					String message = "Variable may not have been initialized";
+					error(message);
+					parseBlock();
+				}
+			} else {
+				String message = "Incorrect type value";  // error message
+				error(message);
+				parseBlock();
+			}
+		} else if( (nextToken == IDENT || nextToken == STRING_LIT) && (tokenArray.get(index-1) == ADD_OP || 
+				tokenArray.get(index-1) == SUB_OP || tokenArray.get(index-1) == MOD_OP ||
+		   		tokenArray.get(index-1) == MULT_OP || tokenArray.get(index-1) == DIV_OP) ) {
+			
+			if(nextToken == STRING_LIT) {
+				writeFile.print(lexemeArray.get(index));
+				index++;
+				mathematicalAssignment(type);
+			} else {
 				String variableName = lexemeArray.get(index);
 
 				if(variableArray.indexOf(variableName) != -1) {
@@ -1102,48 +1195,15 @@ class RecursiveParser extends LexicalAnalyzer
 					error(message);
 					parseBlock();
 				}
-			} else {
-				String message = "Incorrect type value";
-				error(message);
-				parseBlock();
-			}
-		} else if( (nextToken == IDENT) && (tokenArray.get(index-1) == ADD_OP || 
-				tokenArray.get(index-1) == SUB_OP || tokenArray.get(index-1) == MOD_OP ||
-		   		tokenArray.get(index-1) == MULT_OP || tokenArray.get(index-1) == DIV_OP) ) {
-			
-			String variableName = lexemeArray.get(index);
-
-			if(variableArray.indexOf(variableName) != -1) {
-				int key = variableArray.indexOf(variableName);
-				String variableType = typeArray.get(key);
-				
-				if(type.equals("string")) {
-					writeFile.print(lexemeArray.get(index));
-					index++;
-					mathematicalAssignment(type);
-				} else if(!type.equals(variableType)) {
-					String message = "Incompatable type values";
-					error(message);
-					parseBlock();
-				} else {
-					writeFile.print(lexemeArray.get(index));
-					index++;
-					mathematicalAssignment(type);
-				}
-			} else {
-				String message = "Variable may not have been initialized";
-				error(message);
-				parseBlock();
 			}
 		} else if(nextToken == SEMI_COLON) {
-			writeFile.print(lexemeArray.get(index));
-			nextToken();
+			writeFile.print(lexemeArray.get(index));  // write to file
+			nextToken();  // get next token
 			if(nextToken == EOL) {
 				writeFile.print("\r\n");
 				line++;
 				index++;
-				System.out.println("end of statement block");
-				parseBlock();
+				parseBlock();  // recursive parseBlock call
 			} else {
 				String message = "Only one declaraction per line";
 				error(message);
@@ -1154,9 +1214,9 @@ class RecursiveParser extends LexicalAnalyzer
 			index++;
 			parseBlock();
 		} else {
-			String message = "Incorrect expression";
+			String message = "Incorrect expression";  // error message
 			error(message);
-			parseBlock();
+			parseBlock();  // even with errors, continue to parse
 		}
 	}
 
@@ -1168,13 +1228,12 @@ class RecursiveParser extends LexicalAnalyzer
 		if(nextToken == SEMI_COLON) {
 			writeFile.print(lexemeArray.get(index));
 			index++;
-			nextToken = tokenArray.get(index);
+			nextToken = tokenArray.get(index);  // get next token
 			if(nextToken == EOL) {
 				writeFile.print("\r\n");
 				line++;
 				index++;
-				System.out.println("end of statement in block");
-				parseBlock();
+				parseBlock();  // recursive parseBlock call
 			} else {
 				String message = "Only one declaration per line";
 				error(message);
@@ -1183,34 +1242,29 @@ class RecursiveParser extends LexicalAnalyzer
 		} else {
 			String message = "Missing semi-colon";
 			error(message);
-			parseBlock();
+			parseBlock();  // even with errors, continue to parse
 		}
 	}
 
+	// check for brackes after array assignment
 	public void arrayAssignment(String type) {
 		if(index < tokenArray.size()) {
 			nextToken = tokenArray.get(index);
 		}
-
-		if(nextToken == ASSIGN_OP) {
+		
+		System.out.println(lexemeArray.get(index) + " " + nextToken);
+		if(nextToken == LEFT_BRACKET) {
 			writeFile.print(lexemeArray.get(index));
-			nextToken();
-			if(nextToken == LEFT_BRACKET) {
-				writeFile.print(lexemeArray.get(index));
-				index++;
-				arrayLiteral(type);
-			} else {
-				String message = "Incorrect array initialization";
-				error(message);
-				parseBlock();
-			}
+			index++;
+			arrayLiteral(type);  // call to array literal assignment
 		} else {
-			String message = "Incorrect array assignment values";
+			String message = "Incorrect array initialization";
 			error(message);
-			parseBlock();
+			parseBlock();  // even with errors, continue to parse
 		}
 	}
 
+	// check the contents of the literals assigned to an array
 	public void arrayLiteral(String type) {
 		if(index < tokenArray.size()) {
 			nextToken = tokenArray.get(index);
@@ -1225,7 +1279,7 @@ class RecursiveParser extends LexicalAnalyzer
 			if(nextToken == COMMA_SYM) {
 				writeFile.print(lexemeArray.get(index));
 				index++;
-				arrayLiteral(type);
+				arrayLiteral(type);  // recursive arrayLiteral call
 			} else if(nextToken == RIGHT_BRACKET) {
 				writeFile.print(lexemeArray.get(index));
 				nextToken();
@@ -1236,8 +1290,7 @@ class RecursiveParser extends LexicalAnalyzer
 						writeFile.print("\r\n");
 						line++;
 						index++;
-						System.out.println("end of statement in block");
-						parseBlock();
+						parseBlock();  // recursive parseBlock call
 					} else {
 						String message = "Only one declaraction per line";
 						error(message);
@@ -1246,10 +1299,10 @@ class RecursiveParser extends LexicalAnalyzer
 				} else {
 					String message = "Missing semi-colon";
 					error(message);
-					parseBlock();
+					parseBlock();  // even with errors, continue to parse
 				}
 			} else {
-				String message = "Missing comma delimiter";
+				String message = "Missing comma delimiter";  // error message
 				error(message);
 				parseBlock();
 			}
@@ -1260,6 +1313,7 @@ class RecursiveParser extends LexicalAnalyzer
 		}
 	}
 
+	// parse the parameters of an if statement
 	public void parseIfStatement() {
 		if(index < tokenArray.size()) {
 			nextToken = tokenArray.get(index);
@@ -1267,16 +1321,17 @@ class RecursiveParser extends LexicalAnalyzer
 
 		if(nextToken == LEFT_PAREN) {
 			writeFile.print(lexemeArray.get(index));
-			nextToken();
+			nextToken();  // get next token
 			if(nextToken == IDENT) {
 				String variableName = lexemeArray.get(index);
 
+				// if variable was initialized
 				if(variableArray.indexOf(variableName) != -1) {
 					int key = variableArray.indexOf(variableName);
 					String variableType = typeArray.get(key);
 					
 					writeFile.print(lexemeArray.get(index));
-					nextToken();
+					nextToken();  // get next token
 					if(nextToken == EQUALS_OP || nextToken == LESS_SYM || nextToken == GREATER_SYM ||
 						nextToken == NOTEQUALS_OP || nextToken == LESSEQUALS_OP || nextToken == GREATEREQUALS_OP)	 {
 
@@ -1292,12 +1347,12 @@ class RecursiveParser extends LexicalAnalyzer
 									variableType = typeArray.get(key);
 									
 									writeFile.print(lexemeArray.get(index));
-									nextToken();
+									nextToken();  // get next token
 									if(nextToken == AND_OP || nextToken == OR_OP || nextToken == NOT_OP) {
 										System.out.println("operation symbol");
 										writeFile.print(lexemeArray.get(index));
 										index++;
-										parseIfStatement();
+										parseIfStatement();  // recursive parseIfStatement call
 									} else if(nextToken == RIGHT_PAREN) {
 										writeFile.print(lexemeArray.get(index));
 										nextToken();
@@ -1308,12 +1363,11 @@ class RecursiveParser extends LexicalAnalyzer
 												writeFile.print("\r\n");
 												line++;
 												index++;
-												System.out.println("end of start statement in block");
 												parseBlock();
 											} else {
 												String message = "Only one declaraction per line";
 												error(message);
-												parseBlock();
+												parseBlock();  // even with errors, continue to parse
 											}
 										} else {
 											String message = "Missing colon";
@@ -1328,7 +1382,7 @@ class RecursiveParser extends LexicalAnalyzer
 								} else {
 									String message = "Variable may not have been initialized";
 									error(message);
-									parseBlock();
+									parseBlock();  // even with errors, continue to parse
 								}
 							} else {
 								writeFile.print(lexemeArray.get(index));
@@ -1342,13 +1396,12 @@ class RecursiveParser extends LexicalAnalyzer
 									writeFile.print(lexemeArray.get(index));
 									nextToken();
 									if(nextToken == COLON_SYM) {
-										writeFile.print("{\r\n");
+										writeFile.print("{\r\n");  // write to file
 										nextToken();
 										if(nextToken == EOL) {
 											writeFile.print("\r\n");
 											line++;
 											index++;
-											System.out.println("end of start statement in block");
 											parseBlock();
 										} else {
 											String message = "Only one declaraction per line";
@@ -1369,10 +1422,10 @@ class RecursiveParser extends LexicalAnalyzer
 						} else {
 							String message = "Incorrect expression";
 							error(message);
-							parseBlock();
+							parseBlock();  // even with errors, continue to parse
 						}
 					} else {
-						String message = "Incorrect relational operator";
+						String message = "Incorrect relational operator";  // error message
 						error(message);
 						parseBlock();
 					}
@@ -1394,14 +1447,14 @@ class RecursiveParser extends LexicalAnalyzer
 				int key = variableArray.indexOf(variableName);
 				String variableType = typeArray.get(key);
 				
-				writeFile.print(lexemeArray.get(index));
-				nextToken();
+				writeFile.print(lexemeArray.get(index));  // write to file
+				nextToken();  // get next token
 
 				if(nextToken == EQUALS_OP || nextToken == LESS_SYM || nextToken == GREATER_SYM ||
 					nextToken == NOTEQUALS_OP || nextToken == LESSEQUALS_OP || nextToken == GREATEREQUALS_OP)	 {
 
 					writeFile.print(lexemeArray.get(index));
-					nextToken();
+					nextToken();  // get next token
 
 					if(nextToken == IDENT || nextToken == INT_LIT || nextToken == FLOAT_LIT ||
 						nextToken == STRING_LIT) {
@@ -1417,7 +1470,7 @@ class RecursiveParser extends LexicalAnalyzer
 									System.out.println("operation symbol");
 									writeFile.print(lexemeArray.get(index));
 									index++;
-									parseIfStatement();
+									parseIfStatement();  // recursive parseIfStatement
 								} else if(nextToken == RIGHT_PAREN) {
 									writeFile.print(lexemeArray.get(index));
 									nextToken();
@@ -1428,8 +1481,7 @@ class RecursiveParser extends LexicalAnalyzer
 											writeFile.print("\r\n");
 											line++;
 											index++;
-											System.out.println("end of start statement in block");
-											parseBlock();
+											parseBlock();  // recursive parseBlock
 										} else {
 											String message = "Only one declaraction per line";
 											error(message);
@@ -1457,7 +1509,7 @@ class RecursiveParser extends LexicalAnalyzer
 							if(nextToken == AND_OP || nextToken == OR_OP || nextToken == NOT_OP) {
 								writeFile.print(lexemeArray.get(index));
 								index++;
-								parseIfStatement();
+								parseIfStatement();  // recursive parseIfStatement
 							} else if(nextToken == RIGHT_PAREN) {
 								writeFile.print(lexemeArray.get(index));
 								nextToken();
@@ -1468,8 +1520,7 @@ class RecursiveParser extends LexicalAnalyzer
 										writeFile.print("\r\n");
 										line++;
 										index++;
-										System.out.println("end of start statement in block");
-										parseBlock();
+										parseBlock();  // recursive parseBlock call
 									} else {
 										String message = "Only one declaraction per line";
 										error(message);
@@ -1494,7 +1545,7 @@ class RecursiveParser extends LexicalAnalyzer
 				} else {
 					String message = "Incorrect relational operator";
 					error(message);
-					parseBlock();
+					parseBlock();  // even with errors, continue to parse
 				}
 			}
 		} else {
